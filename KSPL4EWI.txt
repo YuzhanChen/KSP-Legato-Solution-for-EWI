@@ -1,0 +1,78 @@
+
+on init  
+	message("Hello, world!") 
+	declare const $fade_time := 400
+	declare $tune_range
+	declare $time
+	declare $tune_amount
+	declare $vol_amount
+    declare const $mute := -30000
+	
+	declare $this_id
+	declare $last_id
+	declare polyphonic $new_id 
+	
+	declare $this_note
+	declare $last_note := 72
+	declare $legato_on := 1
+end on 
+
+function fadein
+	$time := $fade_time
+	$tune_range := ($last_note - $this_note)*100000
+	$tune_amount := $tune_range
+	$vol_amount := $mute
+	while ($time > 0)
+		change_tune($new_id,$tune_amount,0)
+		change_vol($new_id,$vol_amount,0)
+		wait(50)
+		$tune_amount := $tune_amount - $tune_range/$fade_time
+		
+		$vol_amount := $vol_amount -$mute/$fade_time
+		$time := $time - 1
+	end while
+end function
+
+function fadeout
+	$time := $fade_time
+	$tune_range := ($last_note - $this_note)*100000
+	$tune_amount := $tune_range
+	$vol_amount := $mute
+	while ($time > 0)
+		change_tune($new_id,-$tune_range+$tune_amount,0)
+		change_vol($new_id,$mute-$vol_amount,0)
+		wait(50)
+		$tune_amount := $tune_amount - $tune_range/$fade_time
+		$vol_amount := $vol_amount -$mute/$fade_time
+
+		$time := $time - 1
+	end while
+end function
+
+on controller
+	if ($CC_NUM = 68)
+		if (%CC[$CC_NUM] > 0)
+			$legato_on := 1
+		else
+			$legato_on := 0
+		end if
+	end if
+end on
+
+on note
+    ignore_event($EVENT_ID) 
+    $new_id := play_note($EVENT_NOTE,$EVENT_VELOCITY,0,0)
+    $this_note:= $EVENT_NOTE
+   if ($legato_on = 1)
+		call fadein
+	end if
+    $last_note:=$EVENT_NOTE
+end on
+
+on release
+	ignore_event($EVENT_ID) 
+    if ($legato_on = 1)
+		call fadeout
+	end if
+    note_off($new_id) 
+end on
