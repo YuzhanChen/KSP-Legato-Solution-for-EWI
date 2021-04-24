@@ -1,0 +1,331 @@
+{***********************************************
+Midi Monitor
+Author: Native Instruments
+Written by: Nikolas Jeroma
+Modified: July 20, 2020
+*************************************************}
+
+on init
+	message("")
+	set_script_title("MIDI Monitor")
+	set_ui_height(4)
+	
+	declare !CC_names[128]
+	declare $count
+	while ($count < 128)
+		!CC_names[$count] := "Not assigned"
+		inc ($count)
+	end while
+
+	!CC_names[0] :=	"Bank Select"
+	!CC_names[1]:=	"Modulation Wheel"
+	!CC_names[2]:=	"Breath Controller"
+	!CC_names[4]:=	"Foot Pedal"
+	!CC_names[5]:=	"Portamento Time"                                              
+	!CC_names[6]:=	"Data Entry"
+	!CC_names[7]:=	"Volume"
+	!CC_names[8]:=	"Balance"
+	!CC_names[10]:=	"Pan Position"
+	!CC_names[11]:=	"Expression"
+	!CC_names[12]:=	"Effect Control 1"
+	!CC_names[13]:=	"Effect Control 2"
+	!CC_names[16]:=	"GeneralPurpose Slider 1"
+	!CC_names[17]:=	"General Purpose Slider 2"
+	!CC_names[18]:=	"General Purpose Slider 3"
+	!CC_names[19]:=	"General Purpose Slider 4"
+	
+	!CC_names[32]:=	"Bank Select fine"
+	!CC_names[33]:=	"Modulation Wheel fine"
+	!CC_names[34]:=	"Breath Controller fine"
+	!CC_names[36]:=	"Foot Pedal fine"
+	!CC_names[37]:=	"Portamento Time fine"
+	!CC_names[38]:=	"Data Entry fine"
+	!CC_names[39]:=	"Volume fine"
+	!CC_names[40]:=	"Balance fine"
+	!CC_names[42]:=	"Pan Position fine"
+	!CC_names[43]:=	"Expression fine"
+	!CC_names[44]:=	"Effect Control 1 fine"
+	!CC_names[45]:=	"Effect Control 2 fine"
+
+	!CC_names[64]:=	"Hold/Sustain Pedal"
+	!CC_names[65]:=	"Portamento Pedal"
+	!CC_names[66]:=	"Sostenuto Pedal"
+	!CC_names[67]:=	"Soft Pedal"
+	!CC_names[68]:=	"Legato Pedal"
+	!CC_names[69]:=	"Hold 2 Pedal"
+	!CC_names[70]:=	"Sound Variation"
+	!CC_names[71]:=	"Sound Timbre"
+	!CC_names[72]:=	"Sound Release Time"
+	!CC_names[73]:=	"Sound Attack Time"
+	!CC_names[74]:=	"Sound Brightness"
+	!CC_names[75]:=	"Sound Decay Time"
+	!CC_names[76]:=	"Sound Control 7"
+	!CC_names[77]:=	"Sound Control 8"
+	!CC_names[78]:=	"Sound Control 9"
+	!CC_names[79]:=	"Sound Control 10"
+	!CC_names[80]:=	"General Purpose Button 1"
+	!CC_names[81]:=	"General Purpose Button 2"
+	!CC_names[82]:=	"General Purpose Button 3"
+	!CC_names[83]:=	"General Purpose Button 4"
+	!CC_names[91]:=	"Reverb Level"
+	!CC_names[92]:=	"Tremolo Level"
+	!CC_names[93]:=	"Chorus Level"
+	!CC_names[94]:=	"Celeste Level"
+	!CC_names[95]:=	"Phaser Level"
+	!CC_names[96]:=	"Data Button inc"
+	!CC_names[97]:=	"Data Button dec"
+	!CC_names[98]:=	"NRPN fine"
+	!CC_names[99]:=	"NRPN coarse"
+	!CC_names[100]:= "RPN fine"
+	!CC_names[101]:= "RPN coarse"
+	!CC_names[120]:= "All Sound Off"
+	!CC_names[121]:= "All Controllers Off"
+	!CC_names[122]:= "Local Keyboard"
+	!CC_names[123]:= "All Notes Off"
+	!CC_names[124]:= "Omni Mode Off"
+	!CC_names[125]:= "Omni Mode On"
+	!CC_names[126]:= "Mono Operation"
+	!CC_names[127]:= "Poly Operation"
+	
+	declare !note_names[12]
+	!note_names[0] := "C"
+	!note_names[1] := "Db"
+	!note_names[2] := "D"
+	!note_names[3] := "Eb"
+	!note_names[4] := "E"
+	!note_names[5] := "F"
+	!note_names[6] := "Gb"
+	!note_names[7] := "G"
+	!note_names[8] := "Ab"
+	!note_names[9] := "A"
+	!note_names[10] := "Bb"
+	!note_names[11] := "B"
+
+	declare ui_button $Note_On
+	set_text ($Note_On,"Note On")
+	
+	declare ui_button $Note_Off
+	set_text($Note_Off,"Note Off")
+	
+	declare ui_button $controller_button
+	set_text ($controller_button,"Controller")
+	
+	declare ui_button $pbend_button
+	set_text ($pbend_button,"Pitchbend")
+	
+	declare ui_button $Velocity
+	
+	declare ui_button $rpn_nrpn
+	set_text($rpn_nrpn,"RPN/NRPN")
+	
+	declare ui_button $pressure_button
+	set_text($pressure_button,"Channel Pressure")
+	
+	declare ui_button $poly_pressure_button
+	set_text($poly_pressure_button,"Poly Aftertouch")
+	
+	
+	declare ui_button $release_velo_btn
+	set_text ($release_velo_btn,"Release Velocity")
+	
+	declare ui_button $clear_button
+	set_text($clear_button,"Clear Display")
+	declare ui_button $verbose_button
+	set_text($verbose_button,"Verbose Mode")
+	
+	declare ui_label $display (3,6)
+	declare ui_label $label (2,1)
+	
+	declare ui_label $display_label (3,1)
+	set_text ($display_label,"MIDI Monitor Display")
+	move_control ($display_label,2,1)
+	set_control_par(get_ui_id($display_label),$CONTROL_PAR_TEXT_ALIGNMENT,1)
+	
+	set_text ($display, "")
+	set_text ($label, "Choose what MIDI events to monitor")
+	
+	$Note_On := 1
+	$Velocity := 1
+	$pbend_button := 1
+	$controller_button := 1
+	$rpn_nrpn := 0
+	$release_velo_btn := 0
+	
+	move_control ($display,2,2)
+	move_control ($clear_button,1,7)
+	move_control ($verbose_button,1,6)
+	
+	move_control ($label,5,2)
+	move_control ($Note_On,5,3)
+	move_control ($Velocity,6,3)
+	move_control ($controller_button,5,4)
+	move_control ($pbend_button,6,4)
+	move_control ($Note_Off,5,5)
+	move_control ($release_velo_btn,6,5)
+	move_control ($rpn_nrpn,5,7)
+	move_control ($pressure_button,5,6)
+	move_control ($poly_pressure_button,6,6)
+	
+	make_persistent ($Note_On)
+	make_persistent ($Velocity)
+	make_persistent ($controller_button)
+	make_persistent ($pbend_button)
+	make_persistent ($Note_Off)
+	make_persistent ($release_velo_btn)
+	make_persistent ($verbose_button)
+	make_persistent ($rpn_nrpn)
+	make_persistent ($pressure_button)
+	
+		
+	set_control_help ($Note_On,"Note On: If selected, the note numbers of incoming MIDI note on messages will be displayed.")
+	set_control_help ($Velocity,"Velocity: If selected, the velocities of incoming MIDI note on messages will be displayed.")
+	set_control_help ($controller_button, "Controller: If selected, incoming MIDI CC messages will be displayed.")
+	set_control_help ($pbend_button, "Pitchbend: If selected, incoming MIDI pitchbend messages will be displayed.")
+	set_control_help ($Note_Off,"Note Off: If selected, the note number of incoming MIDI note off messages will be displayed.")
+	set_control_help ($release_velo_btn,"Release Velocity: If selected, the release velocity of incoming MIDI note off messages will be displayed.")
+	set_control_help ($verbose_button,"Verbose: Turns on Verbose Mode for the MIDI monitor display., Each MIDI message will be displayed on a separate line.")
+	set_control_help ($rpn_nrpn,"RPN/NRPN: If selected, incoming MIDI RPN and NRPN messages will be displayed.")
+	set_control_help ($pressure_button,"Channel Pressure: If selected, incoming MIDI Channel Pressure messages will be displayed.")
+	set_control_help ($poly_pressure_button, "Poly Aftertouch: If selected, incoming MIDI Polyphonic Aftertouch messages will be displayed.")
+	set_control_help ($clear_button,"Clear: Clears the MIDI Monitor display.")
+	set_control_help ($display,"The MIDI monitor display.")
+end on
+
+on note
+	if ($verbose_button = 0)
+	if ($Note_On = 1)
+		set_text ($display, "Note On: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+	end if
+
+	if ($Velocity = 1)
+		set_text ($display, "Velocity: " & $EVENT_VELOCITY)
+	end if
+
+	if ($Note_On = 1 and $Velocity = 1)
+		set_text ($display, "Note On: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+		add_text_line ($display, "Velocity: " & $EVENT_VELOCITY)
+	end if
+	else
+	{-------Verbose Mode---------}
+	if ($Note_On = 1 and $Velocity = 0)
+		add_text_line ($display, "Note On: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+	end if
+
+	if ($Velocity = 1 and $Note_On = 0)
+		add_text_line ($display, "Velocity: " & $EVENT_VELOCITY)
+	end if
+
+	if ($Note_On = 1 and $Velocity = 1)
+		add_text_line ($display, "Note On: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")" & "   Velocity: " & $EVENT_VELOCITY)
+	end if
+	end if
+end on
+
+on release
+	if ($verbose_button = 0)
+		if ($Note_Off = 1)
+			set_text ($display, "Note Off: " & !note_names[$EVENT_NOTE mod 12]  & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+		end if
+		if ($release_velo_btn = 1)
+			set_text($display, "Release Velocity: " & get_event_par($EVENT_ID,$EVENT_PAR_REL_VELOCITY))
+		end if
+		if ($Note_Off = 1 and $release_velo_btn = 1)
+			set_text ($display, "Note Off: " & !note_names[$EVENT_NOTE mod 12]  & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+			add_text_line($display, "Release Velocity: " & get_event_par($EVENT_ID,$EVENT_PAR_REL_VELOCITY))
+		end if
+		else
+		{----- Verbose Mode -----}
+		if ($Note_Off = 1 and $release_velo_btn = 0)
+			add_text_line ($display, "Note Off: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")")
+		end if
+		if ($release_velo_btn = 1 and $Note_Off = 0)
+			add_text_line($display, "Release Velocity: " & get_event_par($EVENT_ID,$EVENT_PAR_REL_VELOCITY))
+		end if
+		if ($Note_Off = 1 and $release_velo_btn = 1)
+			add_text_line ($display, "Note Off: " & !note_names[$EVENT_NOTE mod 12] & ($EVENT_NOTE / 12) - 2 & "  (" & $EVENT_NOTE & ")" & "   Release Velocity: " & get_event_par($EVENT_ID,$EVENT_PAR_REL_VELOCITY))
+		end if
+		
+	end if
+end on	
+on ui_control ($clear_button)
+	$clear_button := 0
+	set_text ($display, "")
+end on
+on ui_control ($verbose_button)
+	set_text ($display, "")
+end on
+on controller
+	if ($verbose_button = 0)
+		if ($CC_NUM = $VCC_PITCH_BEND and $pbend_button = 1)
+			set_text ($display,"Pitch Bend ")
+			add_text_line ($display, "Value: " & %CC[$CC_NUM])
+		end if
+		if (in_range($CC_NUM,0,127) and $controller_button = 1)
+			set_text ($display,"Controller:  " & $CC_NUM & "   (" & !CC_names[$CC_NUM] & ")")
+			add_text_line ($display, "Value: " & %CC[$CC_NUM])
+		end if
+		if ($CC_NUM = $VCC_MONO_AT and $pressure_button = 1)
+			set_text ($display,"Channel Pressure (Mono Aftertouch)")
+			add_text_line ($display, "Value: " & %CC[$CC_NUM])
+		end if
+	else
+	{----- Verbose Mode -----}
+		if ($CC_NUM = $VCC_PITCH_BEND and $pbend_button = 1)
+			add_text_line ($display,"Pitch Bend " & "   Value: " & %CC[$CC_NUM])
+		end if
+		if (in_range($CC_NUM,0,127) and $controller_button = 1)
+			add_text_line ($display,"Controller:  " & $CC_NUM & "   Value: " & %CC[$CC_NUM])
+		end if
+		if ($CC_NUM = $VCC_MONO_AT and $pressure_button = 1)
+			add_text_line ($display,"Channel Pressure " & "   Value: " & %CC[$CC_NUM])
+		end if
+	end if
+end on
+on rpn
+	if ($verbose_button = 0)
+		if ($rpn_nrpn = 1)
+			select ($RPN_ADDRESS)
+				case 0
+					set_text ($display,"RPN: " & $RPN_ADDRESS  & "   (Pitch Bend Sensitivity)")
+				case 1
+					set_text ($display,"RPN: " & $RPN_ADDRESS & "   (Fine Tuning)")
+				case 2
+					set_text ($display,"RPN: " & $RPN_ADDRESS  & "   (Coarse Tuning)")
+				case 3 to 16383
+					set_text ($display,"RPN: " & $RPN_ADDRESS)
+				end select
+				add_text_line ($display, "Value: " & $RPN_VALUE)
+		end if
+	else
+	{----- Verbose Mode -----}
+		if ($rpn_nrpn = 1)
+			add_text_line ($display,"RPN " & $RPN_ADDRESS & "   Value: " & $RPN_VALUE)
+		end if
+	end if
+end on
+on nrpn
+	if ($verbose_button = 0)
+		if ($rpn_nrpn = 1)
+			set_text ($display,"NRPN: " & $RPN_ADDRESS)
+			add_text_line ($display, "Value: " & $RPN_VALUE)
+		end if
+	else
+	{----- Verbose Mode -----}
+		if ($rpn_nrpn = 1)
+			add_text_line ($display,"NRPN " & $RPN_ADDRESS & "   Value: " & $RPN_VALUE)
+		end if
+	end if
+end on
+
+on poly_at
+	if ($poly_pressure_button = 1)
+		if ($verbose_button = 0)
+			set_text($Display, "Poly Aftertouch: " & !note_names[$POLY_AT_NUM mod 12] & ($POLY_AT_NUM / 12) - 2 & "  (" & $POLY_AT_NUM & ")")
+			add_text_line($Display, "Value: " & %POLY_AT[$POLY_AT_NUM])
+		else
+			add_text_line($Display, "Poly Aftertouch: " & !note_names[$POLY_AT_NUM mod 12] & ($POLY_AT_NUM / 12) - 2 & "  (" & $POLY_AT_NUM & ")" & "   Value: " & %POLY_AT[$POLY_AT_NUM])
+		end if
+	end if
+end on
+
+{END OF SCRIPT}

@@ -1,0 +1,84 @@
+on init
+    make_perfview
+    set_script_title( "ewi legato" )
+    message("")
+
+    { fade time in 0.1 millisecond }
+    declare ui_knob $fade_time (0,1000,1)
+    $fade_time := 100
+    set_control_help( $fade_time, "cross fade time in 0.01 millisecond" )
+
+    declare ui_knob $mute_vol( -10000, -40000, 1 ) 
+    $mute_vol := -40000
+
+    declare $next_note
+    declare $prev_note
+    declare $new_note_ev
+    declare %note_map[128] := (0)
+
+    declare $t1
+    declare $fade_in_tune_range
+    declare $fade_in_tune_offset
+    declare $fade_in_vol_offset
+
+    declare $t2
+    declare $fade_out_tune_range
+    declare $fade_out_tune_offset
+    declare $fade_out_vol_offset
+
+end on
+
+{ note callback, executed whenever a note on message is received }
+on note
+
+    $prev_note := search(%note_map, 1)
+    %note_map[$EVENT_NOTE] := 1
+
+    if($prev_note # -1)
+
+        ignore_event( $EVENT_ID )
+        $new_note_ev := play_note( $EVENT_NOTE, $EVENT_VELOCITY, 1*1000*1000 , -1 )
+
+        { fade in }
+    	$t1 := $fade_time
+        $fade_in_tune_range := ($prev_note - $EVENT_NOTE)*100000
+        $fade_in_tune_offset := $fade_in_tune_range
+        $fade_in_vol_offset := $mute_vol
+        while ($t1 > 0)
+            message("t=" & $t1)
+            change_tune($new_note_ev,$fade_in_tune_offset,0)
+            change_vol($new_note_ev,$fade_in_vol_offset,0)
+            wait(10)
+            $fade_in_tune_offset := $fade_in_tune_offset - $fade_in_tune_range/$fade_time
+            $fade_in_vol_offset := $fade_in_vol_offset - $mute_vol/$fade_time
+            $t1 := $t1 - 1
+        end while
+    end if
+
+end on
+
+{ release callback, executed whenever a note off message is received }
+on release
+    %note_map[$EVENT_NOTE] := 0
+    $next_note := search(%note_map, 1)
+
+    if($next_note # -1)
+        ignore_event( $EVENT_ID )
+        { fade out }
+        $t2 := $fade_time
+        $fade_out_tune_range := ($EVENT_NOTE - $next_note)*100000
+        $fade_out_tune_offset := $fade_out_tune_range
+        $fade_out_vol_offset := $mute_vol
+        while ($t2 > 0)
+            change_tune($EVENT_ID,-$fade_out_tune_range+$fade_out_tune_offset,0)
+            change_vol($EVENT_ID,$mute_vol - $fade_out_vol_offset,0)
+            wait(10)
+            $fade_out_tune_offset := $fade_out_tune_offset - $fade_out_tune_range/$fade_time
+            $fade_out_vol_offset := $fade_out_vol_offset - $mute_vol/$fade_time
+            $t2 := $t2 - 1
+        end while
+        note_off( $EVENT_ID )
+    end if
+    
+end on
+

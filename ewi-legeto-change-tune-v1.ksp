@@ -1,0 +1,61 @@
+on init
+    make_perfview
+    set_script_title( "ewi legato" )
+    message("")
+
+    declare ui_knob $fade_time (0,1000,1)
+    $fade_time := 100
+    set_control_help( $fade_time, "tune change time in 0.1 millisecond" )
+    declare $i
+    declare $n
+    declare $d
+    declare $v
+
+    declare $next_note
+    declare $prev_note
+    declare $origin_note
+    declare %note_map[128] := (0)
+
+    declare $curr_note_ev := 0
+
+end on
+
+{ note callback, executed whenever a note on message is received }
+on note
+
+    $prev_note := search(%note_map, 1)
+    %note_map[$EVENT_NOTE] := 1
+
+    if($prev_note # -1)
+        ignore_event( $EVENT_ID )
+        $n := $fade_time
+        $i := $n - 1
+        $d := ($EVENT_NOTE - $prev_note) * 100000 / $n
+        $v := ($prev_note - $origin_note) * 100000 
+        while($i > 0)
+            $v := $v + $d
+            change_tune($curr_note_ev , $v  , 0)
+            wait(100)
+            $i := $i - 1
+        end while
+        change_tune($curr_note_ev ,($EVENT_NOTE - $origin_note) * 100000 , 0)
+    else
+        $curr_note_ev := $EVENT_ID
+        $origin_note := $EVENT_NOTE
+    end if 
+
+end on
+
+{ release callback, executed whenever a note off message is received }
+on release
+    %note_map[$EVENT_NOTE] := 0
+    $next_note := search(%note_map, 1)
+
+    if($next_note # -1)
+        ignore_event( $EVENT_ID )
+    else 
+        note_off( $curr_note_ev )
+    end if
+    
+end on
+

@@ -1,0 +1,602 @@
+{***********************************************
+Dynamic Key Switches
+Author: Native Instruments
+Written by: Nicki Marinic, Josef Natterer
+Modified: August 4, 2009
+*************************************************}
+
+on init
+	message("")
+	set_ui_height(5)
+	set_script_title("Dynamic Key Switches")
+	declare const $CROSSFADE := 1
+	
+	declare ui_switch $button_1
+	declare ui_switch $button_2
+	declare ui_switch $button_3
+	declare ui_switch $button_4
+	declare ui_switch $button_5
+	declare ui_switch $button_6
+	
+	make_persistent($button_1)
+	make_persistent($button_2)
+	make_persistent($button_3)
+	make_persistent($button_4)
+	make_persistent($button_5)
+	make_persistent($button_6)
+	
+	move_control_px ($button_1,66+(2*92),2+ (1*21))
+	move_control_px ($button_2,66+(5*92),2+ (1*21))
+	move_control_px ($button_3,66+(2*92),2+ (4*21))
+	move_control_px ($button_4,66+(5*92),2+ (4*21))
+	move_control_px ($button_5,66+(2*92),2+ (7*21))
+	move_control_px ($button_6,66+(5*92),2+ (7*21))
+	
+	set_text ($button_1,"Rel Trigger")
+	set_text ($button_2,"Rel Trigger")
+	set_text ($button_3,"Rel Trigger")
+	set_text ($button_4,"Rel Trigger")
+	set_text ($button_5,"Rel Trigger")
+	set_text ($button_6,"Rel Trigger")
+	
+	set_control_help($button_1,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	set_control_help($button_2,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	set_control_help($button_3,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	set_control_help($button_4,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	set_control_help($button_5,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	set_control_help($button_6,"Release Trigger: When activated, relasing the dynamic keyswitch key will trigger the static keyswitch again.")
+	
+	set_control_par(get_ui_id($button_1),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($button_2),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($button_3),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($button_4),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($button_5),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($button_6),$CONTROL_PAR_WIDTH,70)
+	
+	
+	declare ui_value_edit $fade_time_1_knob (0,1000,1)
+	set_text($fade_time_1_knob,"Fade")
+	$fade_time_1_knob := 200
+	
+	declare ui_value_edit $fade_time_2_knob (0,1000,1)
+	set_text($fade_time_2_knob,"Fade")
+	$fade_time_2_knob := 200
+	
+	declare ui_value_edit $fade_time_3_knob (0,1000,1)
+	set_text($fade_time_3_knob,"Fade")
+	$fade_time_3_knob := 200
+	
+	declare ui_value_edit $fade_time_4_knob (0,1000,1)
+	set_text($fade_time_4_knob,"Fade")
+	$fade_time_4_knob := 200
+	
+	declare ui_value_edit $fade_time_5_knob (0,1000,1)
+	set_text($fade_time_5_knob,"Fade")
+	$fade_time_5_knob := 200
+	
+	declare ui_value_edit $fade_time_6_knob (0,1000,1)
+	set_text($fade_time_6_knob,"Fade")
+	$fade_time_6_knob := 200
+	
+	set_control_help ($fade_time_1_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	set_control_help ($fade_time_2_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	set_control_help ($fade_time_3_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	set_control_help ($fade_time_4_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	set_control_help ($fade_time_5_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	set_control_help ($fade_time_6_knob,"Fade: Sets the time in milliseconds for the crossfade of the two articulations.")
+	
+	make_persistent ($fade_time_1_knob)
+	make_persistent ($fade_time_2_knob)
+	make_persistent ($fade_time_3_knob)
+	make_persistent ($fade_time_4_knob)
+	make_persistent ($fade_time_5_knob)
+	make_persistent ($fade_time_6_knob)
+	
+	declare $count
+	
+	declare !note_class[12]
+	!note_class[0] := "C"
+	!note_class[1] := "Db"
+	!note_class[2] := "D"
+	!note_class[3] := "Eb"
+	!note_class[4] := "E"
+	!note_class[5] := "F"
+	!note_class[6] := "Gb"
+	!note_class[7] := "G"
+	!note_class[8] := "Ab"
+	!note_class[9] := "A"
+	!note_class[10] := "Bb"
+	!note_class[11] := "B"
+	declare !note_names [128]
+	$count := 0
+	while ($count < 128)
+		!note_names[$count] := !note_class[$count mod 12] & (($count/12)-2)
+		inc ($count)
+	end while
+	
+	declare ui_value_edit $trigger_note_1 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	declare ui_value_edit $trigger_note_2 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	declare ui_value_edit $trigger_note_3 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	declare ui_value_edit $trigger_note_4 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	declare ui_value_edit $trigger_note_5 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	declare ui_value_edit $trigger_note_6 (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+	
+	set_control_par(get_ui_id($trigger_note_1),$CONTROL_PAR_WIDTH,80)
+	set_control_par(get_ui_id($trigger_note_2),$CONTROL_PAR_WIDTH,80)
+	set_control_par(get_ui_id($trigger_note_3),$CONTROL_PAR_WIDTH,80)
+	set_control_par(get_ui_id($trigger_note_4),$CONTROL_PAR_WIDTH,80)
+	set_control_par(get_ui_id($trigger_note_5),$CONTROL_PAR_WIDTH,80)
+	set_control_par(get_ui_id($trigger_note_6),$CONTROL_PAR_WIDTH,80)
+	
+	set_control_par(get_ui_id($fade_time_1_knob),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($fade_time_2_knob),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($fade_time_3_knob),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($fade_time_4_knob),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($fade_time_5_knob),$CONTROL_PAR_WIDTH,70)
+	set_control_par(get_ui_id($fade_time_6_knob),$CONTROL_PAR_WIDTH,70)
+	
+	set_text($trigger_note_1,"Key 1")
+	set_text($trigger_note_2,"Key 2")
+	set_text($trigger_note_3,"Key 3")
+	set_text($trigger_note_4,"Key 4")
+	set_text($trigger_note_5,"Key 5")
+	set_text($trigger_note_6,"Key 6")
+	
+	set_control_help($trigger_note_1," Key 1: Sets the Note for the dynamic keyswitch key.")
+	set_control_help($trigger_note_2," Key 2: Sets the Note for the dynamic keyswitch key.")
+	set_control_help($trigger_note_3," Key 3: Sets the Note for the dynamic keyswitch key.")
+	set_control_help($trigger_note_4," Key 4: Sets the Note for the dynamic keyswitch key.")
+	set_control_help($trigger_note_5," Key 5: Sets the Note for the dynamic keyswitch key.")
+	set_control_help($trigger_note_6," Key 6: Sets the Note for the dynamic keyswitch key.")
+  	
+  	$trigger_note_1 := 48
+  	$trigger_note_2 := 49
+  	$trigger_note_3 := 50
+  	$trigger_note_4 := 51
+  	$trigger_note_5 := 52
+  	$trigger_note_6 := 53
+  	
+	make_persistent ($trigger_note_1)
+	make_persistent ($trigger_note_2)
+	make_persistent ($trigger_note_3)
+	make_persistent ($trigger_note_4)
+	make_persistent ($trigger_note_5)
+	make_persistent ($trigger_note_6)
+
+	move_control ($trigger_note_1,1,3)
+	move_control ($trigger_note_2,4,3)
+	move_control ($trigger_note_3,1,6)
+	move_control ($trigger_note_4,4,6)
+	move_control ($trigger_note_5,1,9)
+	move_control ($trigger_note_6,4,9)
+	
+	declare ui_label $label_1 (1,1)
+	declare ui_label $label_2 (1,1)
+	declare ui_label $label_3 (1,1)
+	declare ui_label $label_4 (1,1)
+	declare ui_label $label_5 (1,1)
+	declare ui_label $label_6 (1,1)
+	
+	set_text ($label_1,"triggers group:")
+	set_text ($label_2,"triggers group:")
+	set_text ($label_3,"triggers group:")
+	set_text ($label_4,"triggers group:")
+	set_text ($label_5,"triggers group:")
+	set_text ($label_6,"triggers group:")
+	
+	move_control ($label_1,2,2)
+	move_control ($label_2,5,2)
+	move_control ($label_3,2,5)
+	move_control ($label_4,5,5)
+	move_control ($label_5,2,8)
+	move_control ($label_6,5,8)
+	
+	declare ui_menu $group_1_menu
+	declare ui_menu $group_2_menu
+	declare ui_menu $group_3_menu
+	declare ui_menu $group_4_menu
+	declare ui_menu $group_5_menu
+	declare ui_menu $group_6_menu
+	
+	set_control_help ($group_1_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	set_control_help ($group_2_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	set_control_help ($group_3_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	set_control_help ($group_4_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	set_control_help ($group_5_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	set_control_help ($group_6_menu,"Choose a keyswitch group which will be triggered dynamically by the designated dynamic keyswitch key. If you make any changes to the group start options of the instrument in KONTAKT, you have to reload the script.")
+	
+	add_menu_item ($group_1_menu,"Off",0)
+	add_menu_item ($group_2_menu,"Off",0)
+	add_menu_item ($group_3_menu,"Off",0)
+	add_menu_item ($group_4_menu,"Off",0)
+	add_menu_item ($group_5_menu,"Off",0)
+	add_menu_item ($group_6_menu,"Off",0)
+	
+	declare %group_criteria[512]
+	declare $b := 0
+	declare $a := 0
+	declare $cur_keyswitch := -1
+	while($a < $NUM_GROUPS)
+		if(_get_engine_par($ENGINE_PAR_START_CRITERIA_MODE,$a,0,-1) = $START_CRITERIA_ON_KEY)
+			add_menu_item ($group_1_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			add_menu_item ($group_2_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			add_menu_item ($group_3_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			add_menu_item ($group_4_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			add_menu_item ($group_5_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			add_menu_item ($group_6_menu,group_name($a)&" ("&!note_names[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)]&")",$a+1)
+			
+			%group_criteria[_get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)] := $a+1
+			
+			if($cur_keyswitch = -1)
+				$cur_keyswitch := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$a,0,-1)
+			end if
+		end if
+		inc($a)
+	end while
+	
+	make_persistent ($group_1_menu)
+	make_persistent ($group_2_menu)
+	make_persistent ($group_3_menu)
+	make_persistent ($group_4_menu)
+	make_persistent ($group_5_menu)
+	make_persistent ($group_6_menu)
+	
+	move_control ($group_1_menu,2,3)
+	move_control ($group_2_menu,5,3)
+	move_control ($group_3_menu,2,6)
+	move_control ($group_4_menu,5,6)
+	move_control ($group_5_menu,2,9)
+	move_control ($group_6_menu,5,9)
+	
+	move_control($fade_time_1_knob,3,3)
+	move_control($fade_time_2_knob,6,3)
+	move_control($fade_time_3_knob,3,6)
+	move_control($fade_time_4_knob,6,6)
+	move_control($fade_time_5_knob,3,9)
+	move_control($fade_time_6_knob,6,9)
+	
+	_read_persistent_var($group_1_menu)
+	_read_persistent_var($group_2_menu)
+	_read_persistent_var($group_3_menu)
+	_read_persistent_var($group_4_menu)
+	_read_persistent_var($group_5_menu)
+	_read_persistent_var($group_6_menu)
+	
+	declare $trigger_note_1_ks
+	declare $trigger_note_2_ks
+	declare $trigger_note_3_ks
+	declare $trigger_note_4_ks
+	declare $trigger_note_5_ks
+	declare $trigger_note_6_ks
+	
+	if($group_1_menu > 0)
+		$trigger_note_1_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_1_menu-1,0,-1)
+	end if
+	if($group_2_menu > 0)
+		$trigger_note_2_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_2_menu-1,0,-1)
+	end if
+	if($group_3_menu > 0)
+		$trigger_note_3_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_3_menu-1,0,-1)
+	end if
+	if($group_4_menu > 0)
+		$trigger_note_4_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_4_menu-1,0,-1)
+	end if
+	if($group_5_menu > 0)
+		$trigger_note_5_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_5_menu-1,0,-1)
+	end if
+	if($group_6_menu > 0)
+		$trigger_note_6_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_6_menu-1,0,-1)
+	end if
+	
+	
+	declare %pressed_note[128]
+	declare %id_arr[512]
+	declare %note_arr[512]
+	declare %tune_arr[512]
+	declare %pan_arr[512]
+	declare %vol_arr[512]
+	declare $last_trigger_note
+	declare $cursor
+	declare $first 
+end on
+
+on note
+	if ($first = 0 and $cur_keyswitch > 0)
+		play_note($cur_keyswitch,1,0,1000)
+		$first := 1
+	end if
+	if (%group_criteria[$EVENT_NOTE] > 0)
+		$cur_keyswitch := $EVENT_NOTE
+	else
+		if($EVENT_NOTE = $trigger_note_1 and $group_1_menu > 0)
+			play_note($trigger_note_1_ks,1,0,1000)
+			$last_trigger_note := $trigger_note_1
+			$a := 0
+			while($a < $cursor)
+				fade_out(%id_arr[$a],$fade_time_1_knob*1000,1)
+				%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+				change_tune(%id_arr[$a],%tune_arr[$a],1)
+				change_pan(%id_arr[$a],%pan_arr[$a],1)
+				change_vol(%id_arr[$a],%vol_arr[$a],1)
+				if($CROSSFADE = 1)
+					fade_out(%id_arr[$a],1,0)
+					fade_in(%id_arr[$a],$fade_time_1_knob*1000)
+				end if
+				inc($a)
+			end while
+		else
+			if($EVENT_NOTE = $trigger_note_2 and $group_2_menu > 0)
+				play_note($trigger_note_2_ks,1,0,1000)
+				$last_trigger_note := $EVENT_NOTE
+				$a := 0
+				while($a < $cursor)
+					fade_out(%id_arr[$a],$fade_time_2_knob*1000,1)
+					%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+					change_tune(%id_arr[$a],%tune_arr[$a],1)
+					change_pan(%id_arr[$a],%pan_arr[$a],1)
+					change_vol(%id_arr[$a],%vol_arr[$a],1)
+					if($CROSSFADE = 1)
+						fade_out(%id_arr[$a],1,0)
+						fade_in(%id_arr[$a],$fade_time_2_knob*1000)
+					end if
+					inc($a)
+				end while
+			else
+				if($EVENT_NOTE = $trigger_note_3 and $group_3_menu > 0)
+					play_note($trigger_note_3_ks,1,0,1000)
+					$last_trigger_note := $EVENT_NOTE
+					$a := 0
+					while($a < $cursor)
+						fade_out(%id_arr[$a],$fade_time_3_knob*1000,1)
+						%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+						change_tune(%id_arr[$a],%tune_arr[$a],1)
+						change_pan(%id_arr[$a],%pan_arr[$a],1)
+						change_vol(%id_arr[$a],%vol_arr[$a],1)
+						if($CROSSFADE = 1)
+							fade_out(%id_arr[$a],1,0)
+							fade_in(%id_arr[$a],$fade_time_3_knob*1000)
+						end if
+						inc($a)
+					end while
+				else
+					if($EVENT_NOTE = $trigger_note_4 and $group_4_menu > 0)
+						play_note($trigger_note_4_ks,1,0,1000)
+						$last_trigger_note := $EVENT_NOTE
+						$a := 0
+						while($a < $cursor)
+							fade_out(%id_arr[$a],$fade_time_4_knob*1000,1)
+							%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+							change_tune(%id_arr[$a],%tune_arr[$a],1)
+							change_pan(%id_arr[$a],%pan_arr[$a],1)
+							change_vol(%id_arr[$a],%vol_arr[$a],1)
+							if($CROSSFADE = 1)
+								fade_out(%id_arr[$a],1,0)
+								fade_in(%id_arr[$a],$fade_time_4_knob*1000)
+							end if
+							inc($a)
+						end while
+					else
+						if($EVENT_NOTE = $trigger_note_5 and $group_5_menu > 0)
+							play_note($trigger_note_5_ks,1,0,1000)
+							$last_trigger_note := $EVENT_NOTE
+							$a := 0
+							while($a < $cursor)
+								fade_out(%id_arr[$a],$fade_time_5_knob*1000,1)
+								%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+								change_tune(%id_arr[$a],%tune_arr[$a],1)
+								change_pan(%id_arr[$a],%pan_arr[$a],1)
+								change_vol(%id_arr[$a],%vol_arr[$a],1)
+								if($CROSSFADE = 1)
+									fade_out(%id_arr[$a],1,0)
+									fade_in(%id_arr[$a],$fade_time_5_knob*1000)
+								end if
+								inc($a)
+							end while
+						else
+							if($EVENT_NOTE = $trigger_note_6 and $group_6_menu > 0)
+								play_note($trigger_note_6_ks,1,0,1000)
+								$last_trigger_note := $EVENT_NOTE
+								$a := 0
+								while($a < $cursor)
+									fade_out(%id_arr[$a],$fade_time_6_knob*1000,1)
+									%id_arr[$a] := play_note(%note_arr[$a],$EVENT_VELOCITY,0,0)
+									change_tune(%id_arr[$a],%tune_arr[$a],1)
+									change_pan(%id_arr[$a],%pan_arr[$a],1)
+									change_vol(%id_arr[$a],%vol_arr[$a],1)
+									if($CROSSFADE = 1)
+										fade_out(%id_arr[$a],1,0)
+										fade_in(%id_arr[$a],$fade_time_6_knob*1000)
+									end if
+									inc($a)
+								end while
+							else
+								ignore_event($EVENT_ID)
+								%pressed_note[$EVENT_NOTE] := $EVENT_VELOCITY
+								%id_arr[$cursor] := play_note($EVENT_NOTE,$EVENT_VELOCITY,0,0)
+								%note_arr[$cursor] := $EVENT_NOTE
+								%tune_arr[$cursor] := get_event_par($EVENT_ID,$EVENT_PAR_TUNE)
+								%pan_arr[$cursor] := get_event_par($EVENT_ID,$EVENT_PAR_PAN)
+								%vol_arr[$cursor] := get_event_par($EVENT_ID,$EVENT_PAR_VOLUME)
+								change_tune(%id_arr[$cursor],%tune_arr[$cursor],1)
+								change_pan(%id_arr[$cursor],%pan_arr[$cursor],1)
+								change_vol(%id_arr[$cursor],%vol_arr[$cursor],1)
+								inc($cursor)
+							end if
+						end if
+					end if
+				end if
+			end if
+		end if
+	end if
+end on
+
+on release
+	%pressed_note[$EVENT_NOTE] := 0
+	if($EVENT_NOTE = $trigger_note_1 and $group_1_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+		play_note($cur_keyswitch,1,0,1000)
+		if ($button_1 = 1)
+			$a := 0
+			while($a < $cursor)
+				fade_out(%id_arr[$a],$fade_time_1_knob*1000,1)
+				%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+				change_tune(%id_arr[$a],%tune_arr[$a],1)
+				change_pan(%id_arr[$a],%pan_arr[$a],1)
+				change_vol(%id_arr[$a],%vol_arr[$a],1)
+				if($CROSSFADE = 1)
+					fade_out(%id_arr[$a],1,0)
+					fade_in(%id_arr[$a],$fade_time_1_knob*1000)
+				end if
+				inc($a)
+			end while
+		end if
+	else
+		if($EVENT_NOTE = $trigger_note_2 and $group_2_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+			play_note($cur_keyswitch,1,0,1000)
+			if ($button_2 = 1)
+				$a := 0
+				while($a < $cursor)
+					fade_out(%id_arr[$a],$fade_time_2_knob*1000,1)
+					%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+					change_tune(%id_arr[$a],%tune_arr[$a],1)
+					change_pan(%id_arr[$a],%pan_arr[$a],1)
+					change_vol(%id_arr[$a],%vol_arr[$a],1)
+					if($CROSSFADE = 1)
+						fade_out(%id_arr[$a],1,0)
+						fade_in(%id_arr[$a],$fade_time_2_knob*1000)
+					end if
+					inc($a)
+				end while
+			end if
+		else
+			if($EVENT_NOTE = $trigger_note_3 and $group_3_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+				play_note($cur_keyswitch,1,0,1000)
+				if ($button_3 = 1)
+					$a := 0
+					while($a < $cursor)
+						fade_out(%id_arr[$a],$fade_time_3_knob*1000,1)
+						%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+						change_tune(%id_arr[$a],%tune_arr[$a],1)
+						change_pan(%id_arr[$a],%pan_arr[$a],1)
+						change_vol(%id_arr[$a],%vol_arr[$a],1)
+						if($CROSSFADE = 1)
+							fade_out(%id_arr[$a],1,0)
+							fade_in(%id_arr[$a],$fade_time_3_knob*1000)
+						end if
+						inc($a)
+					end while
+				end if
+			else
+				if($EVENT_NOTE = $trigger_note_4 and $group_4_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+					play_note($cur_keyswitch,1,0,1000)
+					if ($button_4 = 1)
+						$a := 0
+						while($a < $cursor)
+							fade_out(%id_arr[$a],$fade_time_4_knob*1000,1)
+							%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+							change_tune(%id_arr[$a],%tune_arr[$a],1)
+							change_pan(%id_arr[$a],%pan_arr[$a],1)
+							change_vol(%id_arr[$a],%vol_arr[$a],1)
+							if($CROSSFADE = 1)
+								fade_out(%id_arr[$a],1,0)
+								fade_in(%id_arr[$a],$fade_time_4_knob*1000)
+							end if
+							inc($a)
+						end while
+					end if
+				else
+					if($EVENT_NOTE = $trigger_note_5 and $group_5_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+						play_note($cur_keyswitch,1,0,1000)
+						if ($button_5 = 1)
+							$a := 0
+							while($a < $cursor)
+								fade_out(%id_arr[$a],$fade_time_5_knob*1000,1)
+								%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+								change_tune(%id_arr[$a],%tune_arr[$a],1)
+								change_pan(%id_arr[$a],%pan_arr[$a],1)
+								change_vol(%id_arr[$a],%vol_arr[$a],1)
+								if($CROSSFADE = 1)
+									fade_out(%id_arr[$a],1,0)
+									fade_in(%id_arr[$a],$fade_time_5_knob*1000)
+								end if
+								inc($a)
+							end while
+						end if
+					else
+						if($EVENT_NOTE = $trigger_note_6 and $group_6_menu > 0 and $last_trigger_note = $EVENT_NOTE)
+							play_note($cur_keyswitch,1,0,1000)
+							if ($button_6 = 1)
+								$a := 0
+								while($a < $cursor)
+									fade_out(%id_arr[$a],$fade_time_6_knob*1000,1)
+									%id_arr[$a] := play_note(%note_arr[$a],%pressed_note[%note_arr[$a]],0,0)
+									change_tune(%id_arr[$a],%tune_arr[$a],1)
+									change_pan(%id_arr[$a],%pan_arr[$a],1)
+									change_vol(%id_arr[$a],%vol_arr[$a],1)
+									if($CROSSFADE = 1)
+										fade_out(%id_arr[$a],1,0)
+										fade_in(%id_arr[$a],$fade_time_6_knob*1000)
+									end if
+									inc($a)
+								end while
+							end if
+						else
+							$a := 0
+							$b := $cursor
+							$cursor := 0
+							while($a < $b)
+								if($EVENT_NOTE # %note_arr[$a])
+									%note_arr[$cursor] := %note_arr[$a]
+									%id_arr[$cursor] := %id_arr[$a]
+									%tune_arr[$cursor] := %tune_arr[$a]
+									%pan_arr[$cursor] := %pan_arr[$a]
+									%vol_arr[$cursor] := %vol_arr[$a]
+									inc($cursor)
+								else 
+									note_off(%id_arr[$a])
+								end if
+								inc($a)
+							end while
+						end if
+					end if
+				end if
+			end if
+		end if
+	end if
+end on	
+
+
+on ui_control($group_1_menu)
+	if($group_1_menu > 0)
+		$trigger_note_1_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_1_menu-1,0,-1)
+	end if
+end on
+
+on ui_control($group_2_menu)
+	if($group_2_menu > 0)
+		$trigger_note_2_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_2_menu-1,0,-1)
+	end if
+end on
+
+on ui_control($group_3_menu)
+	if($group_3_menu > 0)
+		$trigger_note_3_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_3_menu-1,0,-1)
+	end if
+end on
+
+on ui_control($group_4_menu)
+	if($group_4_menu > 0)
+		$trigger_note_4_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_4_menu-1,0,-1)
+	end if
+end on
+
+on ui_control($group_5_menu)
+	if($group_5_menu > 0)
+		$trigger_note_5_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_5_menu-1,0,-1)
+	end if
+end on
+
+on ui_control($group_6_menu)
+	if($group_6_menu > 0)
+		$trigger_note_6_ks := _get_engine_par($ENGINE_PAR_START_CRITERIA_KEY_MIN,$group_6_menu-1,0,-1)
+	end if
+end on

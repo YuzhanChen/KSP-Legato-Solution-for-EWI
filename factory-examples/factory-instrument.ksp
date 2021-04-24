@@ -1,0 +1,2008 @@
+{***********************************************
+Kontakt 4 Factory Library - Instrument
+Synth Collection
+Author: Native Instruments
+Written by: Dinos Vallianatos, Adam Hanley
+Modified: Jan 26, 2010
+*************************************************}
+
+on init
+	make_perfview
+	set_script_title("Instrument")
+	set_ui_height_px(296)
+
+	message("")
+	declare $count
+	
+	declare const $ROOT_X := 66
+	declare const $ROOT_Y := 2
+	declare const $GRID_X := 92
+	declare const $GRID_Y := 21
+
+	declare const $FONT_ID := 2  {the font id for all visible labels}
+	declare const $FONT_ID_2 := 3 {the font id for all the menus}
+	declare const $CREATE_AUTOMATION_ID := 0
+	
+	declare $wait_time := 800	 {Enter control label wait time}
+	declare $last_time
+	declare $grp1_idx := 0
+	declare $grp2_idx := 1
+	declare $lp_slot := 2
+	declare $hp_slot := 3
+	declare $active_filter_slot
+	declare $active_vel_to_cut_idx
+	declare @active_env_to_flt_name
+	declare $eq_slot := 1
+	declare $reverb_slot := 0
+	declare $chorus_slot := 5
+	declare $delay_slot := 6
+	declare $vol_env_idx
+	$vol_env_idx := find_mod($grp1_idx,"VOL_ENV")   
+	declare $flt_env_idx
+	$flt_env_idx := find_mod($grp1_idx, "FLT_ENV")
+	declare $vel_flt1_idx
+	$vel_flt1_idx := find_mod($grp1_idx, "VEL_CUTOFF1")
+	declare $vel_flt2_idx
+	$vel_flt2_idx := find_mod($grp1_idx, "VEL_CUTOFF2")
+
+	{*** CONTROL GROUP "FILTER"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_filter := 1 {X Position of Control Group in grid}
+		declare $y_grid_filter := 1 {Y Position of Control Group in grid}
+		declare $x_px_filter := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_filter := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_FILTER := 16 {number of elements in this control group}
+
+		declare ui_label $backgr_filter (1,1)
+		declare ui_label $title_filter (1,1)
+		declare ui_label $lb_cutoff_filter (1,1)
+		declare ui_label $lb_resonance_filter (1,1)
+		declare ui_label $lb_vel_filter (1,1)
+		declare ui_label $lb_env_filter (1,1)
+		declare ui_label $lb_sound_filter (1,1)
+		declare ui_label $lb_hp_filter (1,1)
+		declare ui_label $lb_lp_filter (1,1)
+		declare ui_slider $cutoff_filter (0, 1000000)
+		declare ui_slider $resonance_filter (0, 1000000)
+		declare ui_slider $vel_filter (0, 1000000)
+		declare ui_slider $env_filter (-1000000, 1000000)
+		declare ui_slider $sound_filter (0, 100)
+		declare ui_button $hp_filter
+		declare ui_button $lp_filter
+
+		declare %filter_id[$NUM_FILTER]
+		%filter_id[0] := get_ui_id($backgr_filter)
+		%filter_id[1] := get_ui_id($title_filter)
+		%filter_id[2] := get_ui_id($lb_cutoff_filter)
+		%filter_id[3] := get_ui_id($lb_resonance_filter)
+		%filter_id[4] := get_ui_id($lb_vel_filter)
+		%filter_id[5] := get_ui_id($lb_env_filter)
+		%filter_id[6] := get_ui_id($lb_sound_filter)
+		%filter_id[7] := get_ui_id($lb_hp_filter)
+		%filter_id[8] := get_ui_id($lb_lp_filter)
+		%filter_id[9] := get_ui_id($cutoff_filter)
+		%filter_id[10] := get_ui_id($resonance_filter)
+		%filter_id[11] := get_ui_id($vel_filter)
+		%filter_id[12] := get_ui_id($env_filter)
+		%filter_id[13] := get_ui_id($sound_filter)
+		%filter_id[14] := get_ui_id($hp_filter)
+		%filter_id[15] := get_ui_id($lp_filter)
+
+		declare !filter_name[$FILTER_TYPE_EQ3BAND+1]
+		!filter_name[$FILTER_TYPE_LP1POLE] := "LP"
+		!filter_name[$FILTER_TYPE_HP1POLE] := "HP"
+		!filter_name[$FILTER_TYPE_BP2POLE] := "BP"
+		!filter_name[$FILTER_TYPE_LP2POLE] := "LP"
+		!filter_name[$FILTER_TYPE_HP2POLE] := "HP"
+		!filter_name[$FILTER_TYPE_LP4POLE] := "LP"
+		!filter_name[$FILTER_TYPE_HP4POLE] := "HP"
+		!filter_name[$FILTER_TYPE_BP4POLE] := "BP"
+		!filter_name[$FILTER_TYPE_BR4POLE] := "BR"
+		!filter_name[$FILTER_TYPE_LP6POLE] := "LP"
+		!filter_name[$FILTER_TYPE_PHASER] := "PHASER"
+		!filter_name[$FILTER_TYPE_VOWELA] := "VOWEL"
+		!filter_name[$FILTER_TYPE_VOWELB] := "VOWEL"
+		!filter_name[$FILTER_TYPE_PRO52] := "LP"
+		!filter_name[$FILTER_TYPE_LADDER] := "LP"
+		!filter_name[$FILTER_TYPE_VERSATILE] := "3x2"
+		!filter_name[$FILTER_TYPE_EQ1BAND] := "1-band EQ"
+		!filter_name[$FILTER_TYPE_EQ2BAND] := "2-band EQ"
+		!filter_name[$FILTER_TYPE_EQ3BAND] := "3-band EQ"
+
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($backgr_filter,($GRID_X * 1) + 0, ($GRID_Y * 1) + 0) {possible to offset control in pixels}
+		move_control_px($title_filter, ($GRID_X * 1) + 0, ($GRID_Y * 1) + 0)
+		move_control_px($lb_cutoff_filter, ($GRID_X * 1) + 0, ($GRID_Y * 2) + 9)
+		move_control_px($lb_resonance_filter, ($GRID_X * 1) + 46, ($GRID_Y * 2) + 9)
+		move_control_px($lb_vel_filter, ($GRID_X * 1) + 0, ($GRID_Y * 4) + 9)
+		move_control_px($lb_env_filter, ($GRID_X * 1) + 46, ($GRID_Y * 4) + 9)
+		move_control_px($lb_sound_filter, ($GRID_X * 2) + 0, ($GRID_Y * 4) + 9)
+		move_control_px($lb_hp_filter, ($GRID_X * 2) + 18, ($GRID_Y * 4) + 23)
+		move_control_px($lb_lp_filter, ($GRID_X * 1) + 55, ($GRID_Y * 4) + 23)
+		move_control_px($cutoff_filter, ($GRID_X * 0) + 61, ($GRID_Y * 3) + 13)
+		move_control_px($resonance_filter, ($GRID_X * 1) + 25, ($GRID_Y * 3) + 13)
+		move_control_px($vel_filter, ($GRID_X * 0) + 61, ($GRID_Y * 6) + 12)
+		move_control_px($env_filter, ($GRID_X * 1) + 25, ($GRID_Y * 6) + 12)
+		move_control_px($sound_filter, ($GRID_X * 2) + 18, ($GRID_Y * 6) + 12)
+		move_control_px($hp_filter, ($GRID_X * 2) + 47, ($GRID_Y * 3) + 14)
+		move_control_px($lp_filter, ($GRID_X * 1) + 84, ($GRID_Y * 3) + 14)
+		
+		{VARIOUS ATTRIBUTES}
+
+		set_control_par(%filter_id[12], $CONTROL_PAR_DEFAULT_VALUE, 0)
+		set_control_par(%filter_id[9], $CONTROL_PAR_DEFAULT_VALUE, 1000000)
+		
+		$hp_filter := (_get_engine_par ($ENGINE_PAR_EFFECT_BYPASS, $grp1_idx, $hp_slot, -1) + 1) mod 2
+		$lp_filter := ($hp_filter + 1) mod 2
+		
+		if ($hp_filter = 1)
+			$active_filter_slot := $hp_slot
+			$active_vel_to_cut_idx := $vel_flt2_idx
+			@active_env_to_flt_name := "HP_ENV_AMT"
+		else
+			$active_filter_slot := $lp_slot
+			$active_vel_to_cut_idx := $vel_flt1_idx
+			@active_env_to_flt_name := "LP_ENV_AMT"
+		end if
+		
+		$cutoff_filter := _get_engine_par($ENGINE_PAR_CUTOFF, $grp1_idx, $active_filter_slot, -1)
+		$resonance_filter := _get_engine_par($ENGINE_PAR_RESONANCE, $grp1_idx, $active_filter_slot, -1)
+		$vel_filter := _get_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $active_vel_to_cut_idx, -1)
+
+		if (_get_engine_par ($MOD_TARGET_INVERT_SOURCE, $grp1_idx, $flt_env_idx,...
+													find_target(0, $flt_env_idx, @active_env_to_flt_name)) = 0)
+			$env_filter := _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+													find_target(0, $flt_env_idx, @active_env_to_flt_name))
+		else
+			$env_filter := - _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+													find_target(0, $flt_env_idx, @active_env_to_flt_name))
+		end if
+	
+		make_persistent($sound_filter)
+		
+		set_control_par_str(%filter_id[0], $CONTROL_PAR_TEXT, "")	  
+		set_control_par_str(%filter_id[1], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%filter_id[2], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%filter_id[3], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%filter_id[4], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%filter_id[5], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%filter_id[6], $CONTROL_PAR_TEXT, "")
+
+		set_control_par_str(%filter_id[7], $CONTROL_PAR_TEXT,...
+			!filter_name[_get_engine_par ($ENGINE_PAR_EFFECT_SUBTYPE, $grp1_idx, $hp_slot, -1)])		   
+		set_control_par_str(%filter_id[8], $CONTROL_PAR_TEXT,...
+			!filter_name[_get_engine_par ($ENGINE_PAR_EFFECT_SUBTYPE, $grp1_idx, $lp_slot, -1)])
+		
+		
+		
+		$count := 0
+		while ($count < 9)
+			set_control_par(%filter_id[$count], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+			set_control_par(%filter_id[$count], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+			set_control_par(%filter_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%filter_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			set_control_par(%filter_id[$count], $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+			inc($count)
+		end while
+
+		set_control_par_str(%filter_id[9], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%filter_id[10], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%filter_id[11], $CONTROL_PAR_PICTURE, "pv_synth_knob_orange")
+		set_control_par_str(%filter_id[12], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+		set_control_par_str(%filter_id[13], $CONTROL_PAR_PICTURE, "pv_synth_knob_main")
+
+		$count := 9
+		while ($count < 14)
+			set_control_par(%filter_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			inc($count)
+		end while
+
+		$count := 14
+		while ($count < 16)
+			set_control_par_str(%filter_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_button_big")
+			set_control_par(%filter_id[$count], $CONTROL_PAR_HEIGHT, 31)
+			set_control_par(%filter_id[$count], $CONTROL_PAR_WIDTH, 31)
+			set_control_par_str(%filter_id[$count], $CONTROL_PAR_TEXT, "")
+			inc($count)
+		end while	  
+
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_FILTER)
+			set_control_par (%filter_id[$count],$CONTROL_PAR_POS_X,get_control_par(%filter_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_filter - 2)*$GRID_X + $x_px_filter)
+			
+			set_control_par (%filter_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%filter_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_filter - 2)*$GRID_Y + $y_px_filter) 
+			
+			inc($count)
+		end while	
+
+		{*** SOUND KNOB FUNCTIONALITY START}
+		
+		{values of freq-bandwith-gain of the various eq bands}
+	
+		declare %savearr_filter[10*10] := (...
+		{0 }	500000,500000,500000,   500000,500000,500000,   500000, 500000,500000,...
+		{10}	365637, 62500,700000,   620113, 62500,500000,  1000000,1000000,	 0,...
+		{20}	 83984,326172,200195,   405273,128906,589844,  1000000,1000000,181641,...
+		{30}	245117,416016,266602,   632813,207031,625977,   862305, 173828,661133,...
+		{40}	515625,	 0,704102,   447266,	 0,169922,   706055,	  0,714844,...
+		{50}	870117,586914,715820,   333008,360352,272461,   856445,	  0,192383,...
+		{60}	648438,586914,757813,   266602,360352,165039,   670898,	  0,132813,...
+		{70}	376953,	 0, 39062,   555664,	 0,578125,   796875, 144531,623047,...
+		{80}	172852,660156,	 0,   699219,  6836,692383,   407227,	  0,778320,...
+		{90}	233398,219727,583984,   533203,250000,355469,   633789, 639648,601563,...
+		{100}   137695,357422,362305,   491211,250000,571289,   832031, 417969,463867)
+		make_persistent(%savearr_filter)
+	
+		declare %engine_par_filter[9] := (...
+		$ENGINE_PAR_FREQ1,$ENGINE_PAR_BW1,$ENGINE_PAR_GAIN1,...
+		$ENGINE_PAR_FREQ2,$ENGINE_PAR_BW2,$ENGINE_PAR_GAIN2,...
+		$ENGINE_PAR_FREQ3,$ENGINE_PAR_BW3,$ENGINE_PAR_GAIN3)
+		declare $helper_eq_filter
+		declare $a_eq_filter
+		declare $knob_eq_filter
+	
+		_read_persistent_var($sound_filter)
+		$knob_eq_filter := ($sound_filter+10)*10
+		declare $index_1_filter
+		declare $index_2_filter
+	
+		{*** END SOUND KNOB FUNCIONALITY}
+		
+		
+		set_control_par_str(get_ui_id($cutoff_filter),$CONTROL_PAR_AUTOMATION_NAME,"Cutoff")
+		set_control_par_str(get_ui_id($resonance_filter),$CONTROL_PAR_AUTOMATION_NAME,"Reso")
+		set_control_par_str(get_ui_id($vel_filter),$CONTROL_PAR_AUTOMATION_NAME,"Flt Vel")
+		set_control_par_str(get_ui_id($env_filter),$CONTROL_PAR_AUTOMATION_NAME,"Flt Env Amt")
+		set_control_par_str(get_ui_id($sound_filter),$CONTROL_PAR_AUTOMATION_NAME,"Sound")
+		
+		set_control_par_str(get_ui_id($cutoff_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CUTOFF, $grp1_idx, $active_filter_slot, -1) & " Hz")
+		set_control_par_str(get_ui_id($resonance_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RESONANCE, $grp1_idx, $active_filter_slot, -1) & " %")
+		set_control_par_str(get_ui_id($vel_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $active_vel_to_cut_idx, -1) & " %")
+		set_control_par_str(get_ui_id($sound_filter),$CONTROL_PAR_LABEL,$sound_filter & " %")
+		if ($env_filter < 0)
+			set_control_par_str(get_ui_id($env_filter),$CONTROL_PAR_LABEL,"-" & get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name)) & " %")
+		else
+			set_control_par_str(get_ui_id($env_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name)) & " %")
+		end if	
+		
+		
+	{*** END CONTROL GROUP "FILTER"}
+
+	{*** CONTROL GROUP "MIX"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_mix := 3 {X Position of Control Group in grid}
+		declare $y_grid_mix := 1 {Y Position of Control Group in grid}
+		declare $x_px_mix := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_mix := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_MIX := 12 {number of elements in this control group}
+
+		declare ui_label $backgr_mix (1,1)
+		declare ui_label $title_mix (1,1)
+		declare ui_label $lb_vola_mix (1,1)
+		declare ui_label $lb_volb_mix (1,1)
+		declare ui_label $lb_onoffa_mix (1,1)
+		declare ui_label $lb_onoffb_mix (1,1)
+		declare ui_label $lb_spread_mix (1,1)
+		declare ui_slider $vola_mix (0, 1000000)
+		declare ui_slider $volb_mix (0, 1000000)
+		declare ui_slider $spread_mix (0, 1000000)
+		declare ui_switch $onoffa_mix
+		declare ui_switch $onoffb_mix
+		
+		declare %mix_id[$NUM_MIX]
+		%mix_id[0] := get_ui_id($backgr_mix)
+		%mix_id[1] := get_ui_id($title_mix)
+		%mix_id[2] := get_ui_id($lb_vola_mix)
+		%mix_id[3] := get_ui_id($lb_volb_mix)
+		%mix_id[4] := get_ui_id($lb_onoffa_mix)
+		%mix_id[5] := get_ui_id($lb_onoffb_mix)
+		%mix_id[6] := get_ui_id($lb_spread_mix)
+		%mix_id[7] := get_ui_id($vola_mix)
+		%mix_id[8] := get_ui_id($volb_mix)
+		%mix_id[9] := get_ui_id($spread_mix)
+		%mix_id[10] := get_ui_id($onoffa_mix)
+		%mix_id[11] := get_ui_id($onoffb_mix)
+
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($backgr_mix,($GRID_X * 1) + 0, ($GRID_Y * 1) + 0) {possible to offset control in pixels}
+		move_control_px($title_mix, ($GRID_X * 1) + 0, ($GRID_Y * 1) + 0)
+		move_control_px($lb_vola_mix, ($GRID_X * 1) + 6, ($GRID_Y * 2) + 0)
+		move_control_px($lb_volb_mix, ($GRID_X * 1) + 52, ($GRID_Y * 2) + 0)
+		move_control_px($lb_onoffa_mix, ($GRID_X * 1) + 0, ($GRID_Y * 7) + 0)
+		move_control_px($lb_onoffb_mix, ($GRID_X * 1) + 46, ($GRID_Y * 7) + 0)
+		move_control_px($lb_spread_mix, ($GRID_X * 1) + 22, ($GRID_Y * 8) + 10)
+		move_control_px($vola_mix, ($GRID_X * 1) + 34, ($GRID_Y * 3) + 21)
+		move_control_px($volb_mix, ($GRID_X * 2) + 24, ($GRID_Y * 3) + 21)
+		move_control_px($spread_mix, ($GRID_X * 1) + 76, ($GRID_Y * 6) + 12)
+		move_control_px($onoffa_mix, ($GRID_X * 1) + 73, ($GRID_Y * 3) + 12)
+		move_control_px($onoffb_mix, ($GRID_X * 1) + 91, ($GRID_Y * 3) + 41)
+		
+		{VARIOUS ATTRIBUTES}
+
+		set_control_par(%mix_id[7], $CONTROL_PAR_DEFAULT_VALUE, 631000)
+		set_control_par(%mix_id[8], $CONTROL_PAR_DEFAULT_VALUE, 631000)
+
+		make_persistent($vola_mix)
+		make_persistent($volb_mix)
+		make_persistent($spread_mix)
+		make_persistent($onoffa_mix)
+		make_persistent($onoffb_mix)
+
+		set_control_par_str(%mix_id[0], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[1], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[2], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[3], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[4], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[5], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%mix_id[6], $CONTROL_PAR_TEXT, "")
+
+		
+		$count := 0
+		while ($count < 7)
+			set_control_par(%mix_id[$count], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+			set_control_par(%mix_id[$count], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+			set_control_par(%mix_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%mix_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			inc($count)
+		end while
+
+		$count := 7
+		while ($count < 9)
+			set_control_par_str(%mix_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_knob_big")
+			set_control_par(%mix_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			inc($count)
+		end while
+
+		set_control_par_str(%mix_id[9], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+		set_control_par(%mix_id[9], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+	
+		$count := 10
+		while ($count < 12)
+			set_control_par_str(%mix_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_button_small")
+			set_control_par(%mix_id[$count], $CONTROL_PAR_HEIGHT,23)
+			set_control_par(%mix_id[$count], $CONTROL_PAR_WIDTH, 23)
+			set_control_par_str(%mix_id[$count], $CONTROL_PAR_TEXT, "")
+			inc($count)
+		end while
+
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_MIX)
+			set_control_par (%mix_id[$count],$CONTROL_PAR_POS_X,get_control_par(%mix_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_mix - 2)*$GRID_X + $x_px_mix)
+			
+			set_control_par (%mix_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%mix_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_mix - 2)*$GRID_Y + $y_px_mix) 
+			
+			inc($count)
+		end while
+		
+		set_control_par_str(get_ui_id($onoffa_mix),$CONTROL_PAR_AUTOMATION_NAME,"Part A")
+		set_control_par_str(get_ui_id($onoffb_mix),$CONTROL_PAR_AUTOMATION_NAME,"Part B")
+		set_control_par_str(get_ui_id($vola_mix),$CONTROL_PAR_AUTOMATION_NAME,"Vol A")
+		set_control_par_str(get_ui_id($volb_mix),$CONTROL_PAR_AUTOMATION_NAME,"Vol B")
+		set_control_par_str(get_ui_id($spread_mix),$CONTROL_PAR_AUTOMATION_NAME,"Spread")
+		
+		read_persistent_var($spread_mix)
+		
+		set_control_par_str(get_ui_id($vola_mix),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_VOLUME, $grp1_idx, -1, -1) & " dB")
+		set_control_par_str(get_ui_id($volb_mix),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_VOLUME, $grp2_idx, -1, -1) & " dB")
+		set_control_par_str(get_ui_id($spread_mix),$CONTROL_PAR_LABEL,$spread_mix/10000 & " %")
+		
+	{*** END CONTROL GROUP "MIX"}
+
+	{*** CONTROL GROUP "VOICING"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_voicing := 5 {X Position of Control Group in grid}
+		declare $y_grid_voicing := 2 {Y Position of Control Group in grid}
+		declare $x_px_voicing := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_voicing := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_VOICING := 14 {number of elements in this control group}
+
+		declare $new_note
+		declare $id
+
+		declare !chord_names[20]
+		!chord_names[0] := "OCTAVE"
+		!chord_names[1] := "FIFTH"
+		!chord_names[2] := "FOURTH"
+		!chord_names[3] := "THIRD"
+		!chord_names[4] := "MAJ"
+		!chord_names[5] := "MAJ 6"
+		!chord_names[6] := "MAJ SUS2"
+		!chord_names[7] := "MAJ SUS4"
+		!chord_names[8] := "MAJ 7"
+		!chord_names[9] := "MIN"
+		!chord_names[10] := "MIN 6"
+		!chord_names[11] := "MIN 7"
+		!chord_names[12] := "MIN 7 (b5)"
+		!chord_names[13] := "MIN MAJ7"
+		!chord_names[14] := "DOM 7"
+		!chord_names[15] := "DOM 7 SUS4"
+		!chord_names[16] := "DOM 9"
+		!chord_names[17] := "DIM"
+		!chord_names[18] := "DIM 7"
+		!chord_names[19] := "AUG"
+	
+		declare %chord_types[20*4] := (...
+		12, 0, 0, 0,...
+		7, 0, 0, 0,...
+		5, 0, 0, 0,...
+		4, 0, 0, 0,...
+		4, 7, 0, 0,...
+		4, 7, 9, 0,...
+		2, 7, 0, 0,...
+		5, 7, 0, 0,...
+		4, 7, 11, 0,...
+		3, 7, 0, 0,...
+		3, 7, 9, 0,...
+		3, 7, 10, 0,...
+		3, 6, 10, 0,...
+		3, 7, 11, 0,...
+		4, 7, 10, 0,...
+		5, 7, 10, 0,...
+		4, 7, 10, 14,...
+		3, 6, 0, 0,...
+		3, 6, 9, 0,...
+		4, 8, 0, 0)
+
+		declare ui_label $backgr_voicing (1,1)
+		declare ui_label $title_voicing (1,1)
+		declare ui_label $lb_solo_voicing (1,1)
+		declare ui_label $lb_glide_voicing (1,1)
+		declare ui_label $lb_chord_onoff_voicing (1,1)
+		declare ui_label $lb_legato_voicing (1,1)
+		declare ui_label $lb_glidetime_voicing (1,1)
+		declare ui_label $lb_chord_voicing (1,1)
+		declare ui_slider $glidetime_voicing (0, 127)
+		declare ui_slider $chord_voicing (0, 19)
+		declare ui_switch $solo_voicing
+		declare ui_switch $glide_voicing
+		declare ui_switch $legato_voicing
+		declare ui_switch $chord_onoff_voicing
+		
+		declare %voicing_id[$NUM_VOICING]
+		%voicing_id[0] := get_ui_id($backgr_voicing)
+		%voicing_id[1] := get_ui_id($title_voicing)
+		%voicing_id[2] := get_ui_id($lb_solo_voicing)
+		%voicing_id[3] := get_ui_id($lb_glide_voicing)
+		%voicing_id[4] := get_ui_id($lb_chord_onoff_voicing)
+		%voicing_id[5] := get_ui_id($lb_legato_voicing)
+		%voicing_id[6] := get_ui_id($lb_glidetime_voicing)
+		%voicing_id[7] := get_ui_id($lb_chord_voicing)
+		%voicing_id[8] := get_ui_id($glidetime_voicing)
+		%voicing_id[9] := get_ui_id($chord_voicing)
+		%voicing_id[10] := get_ui_id($solo_voicing)
+		%voicing_id[11] := get_ui_id($glide_voicing)
+		%voicing_id[12] := get_ui_id($legato_voicing)
+		%voicing_id[13] := get_ui_id($chord_onoff_voicing)
+
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($backgr_voicing,($GRID_X * 1) + 0, ($GRID_Y * 1) + 0) {possible to offset control in pixels}
+		move_control_px($title_voicing, ($GRID_X * 1) + 0, ($GRID_Y * 1) + 0)
+		move_control_px($lb_solo_voicing, ($GRID_X * 1) + 0, ($GRID_Y * 2) + 0)
+		move_control_px($lb_glide_voicing, ($GRID_X * 1) + 46, ($GRID_Y * 2) + 0)
+		move_control_px($lb_chord_onoff_voicing, ($GRID_X * 2) + 5, ($GRID_Y * 2) + 44)
+		move_control_px($lb_legato_voicing, ($GRID_X * 1) + 0, ($GRID_Y * 4) + 0)
+		move_control_px($lb_glidetime_voicing, ($GRID_X * 1) + 89, ($GRID_Y * 4) + 0)
+		move_control_px($lb_chord_voicing, ($GRID_X * 2) + 5, ($GRID_Y * 5) + 43)
+		move_control_px($glidetime_voicing, ($GRID_X * 1) + 70, ($GRID_Y * 5) + 12)
+		move_control_px($solo_voicing, ($GRID_X * 1) + 17, ($GRID_Y * 3) - 7)
+		move_control_px($glide_voicing, ($GRID_X * 1) + 72, ($GRID_Y * 3) - 7)
+		move_control_px($chord_voicing, ($GRID_X * 2) + 33, ($GRID_Y * 5) + 12)
+		move_control_px($legato_voicing, ($GRID_X * 1) + 17, ($GRID_Y * 6) - 8)
+		move_control_px($chord_onoff_voicing, ($GRID_X * 2) + 35, ($GRID_Y * 3) - 7)
+			  
+		{VARIOUS ATTRIBUTES}
+
+		make_persistent($glidetime_voicing)
+		make_persistent($solo_voicing)
+		make_persistent($glide_voicing)
+		make_persistent($legato_voicing)
+		make_persistent($chord_onoff_voicing)
+		make_persistent($chord_voicing)
+
+		_read_persistent_var($solo_voicing)
+		_read_persistent_var($legato_voicing)
+		_read_persistent_var($glide_voicing)
+		_read_persistent_var($glidetime_voicing)
+
+		if ($solo_voicing = 1)
+			if ($legato_voicing = 1)
+				_pgs_set_key_val(SOLO_MODE,0,2)
+			else
+				_pgs_set_key_val(SOLO_MODE,0,1)
+			end if
+		else
+			_pgs_set_key_val(SOLO_MODE,0,0)
+		end if
+		_pgs_set_key_val(DET_TIME, 0, $solo_voicing)
+
+		if ($glide_voicing = 1)
+			_pgs_set_key_val(GLIDE_ON_OFF,0,2)
+		else
+			_pgs_set_key_val(GLIDE_ON_OFF,0,0)
+		end if
+
+		_pgs_set_key_val(GLIDE_TIME,0,$glidetime_voicing)
+
+		set_control_par_str(%voicing_id[0], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[1], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[2], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[3], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[4], $CONTROL_PAR_TEXT, "CHORD")
+		set_control_par_str(%voicing_id[5], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[6], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%voicing_id[7], $CONTROL_PAR_TEXT, "PRESET")
+
+		set_control_par(%voicing_id[0], $CONTROL_PAR_WIDTH, ($GRID_X * 1) + 46)
+		set_control_par(%voicing_id[0], $CONTROL_PAR_HEIGHT, ($GRID_Y * 6))
+		set_control_par(%voicing_id[1], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+		set_control_par(%voicing_id[1], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+
+		$count := 0
+		while ($count < 8)
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			inc($count)
+		end while
+
+		$count := 8
+		while ($count < 10)
+			set_control_par_str(%voicing_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			inc($count)
+		end while
+	
+		$count := 10
+		while ($count < 14)
+			set_control_par_str(%voicing_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_button_big")
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_WIDTH, 31)
+			set_control_par(%voicing_id[$count], $CONTROL_PAR_HEIGHT, 31)
+			set_control_par_str(%voicing_id[$count], $CONTROL_PAR_TEXT, "")
+			inc($count)
+		end while
+
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_VOICING)
+			set_control_par (%voicing_id[$count],$CONTROL_PAR_POS_X,get_control_par(%voicing_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_voicing - 2)*$GRID_X + $x_px_voicing)
+			
+			set_control_par (%voicing_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%voicing_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_voicing - 2)*$GRID_Y + $y_px_voicing) 
+			
+			inc($count)
+		end while
+		
+		read_persistent_var($chord_voicing)
+		
+		set_control_par_str(get_ui_id($solo_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Solo")
+		set_control_par_str(get_ui_id($glide_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Glide")
+		set_control_par_str(get_ui_id($chord_onoff_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Chord")
+		set_control_par_str(get_ui_id($legato_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Legato")
+		set_control_par_str(get_ui_id($glidetime_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Glide Time")
+		set_control_par_str(get_ui_id($chord_voicing),$CONTROL_PAR_AUTOMATION_NAME,"Preset")
+		
+		set_control_par_str(get_ui_id($glidetime_voicing),$CONTROL_PAR_LABEL,$glidetime_voicing)
+		set_control_par_str(get_ui_id($chord_voicing),$CONTROL_PAR_LABEL,!chord_names[$chord_voicing])
+		
+	{*** END CONTROL GROUP "VOICING"}
+
+	{*** CONTROL GROUP "ADSR"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_adsr := 1 {X Position of Control Group in grid}
+		declare $y_grid_adsr := 10 {Y Position of Control Group in grid}
+		declare $x_px_adsr := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_adsr := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_ADSR := 17 {number of elements in this control group}
+
+		declare ui_label $backgr_adsr (1,1)
+		declare ui_label $title_adsr (1,1)
+		declare ui_label $lb_a_adsr (1,1)
+		declare ui_label $lb_d_adsr(1,1)
+		declare ui_label $lb_s_adsr (1,1)
+		declare ui_label $lb_r_adsr (1,1)
+		declare ui_label $lb_vol_adsr (1,1)
+		declare ui_label $lb_flt_adsr (1,1)
+		declare ui_slider $vol_a_adsr (0, 1000000)
+		declare ui_slider $vol_d_adsr (0, 1000000)
+		declare ui_slider $vol_s_adsr (0, 1000000)
+		declare ui_slider $vol_r_adsr (0, 1000000)
+		declare ui_slider $flt_a_adsr (0, 1000000)
+		declare ui_slider $flt_d_adsr (0, 1000000)
+		declare ui_slider $flt_s_adsr (0, 1000000)
+		declare ui_slider $flt_r_adsr (0, 1000000)
+		declare ui_button $vol_flt_adsr
+
+		declare %adsr_id[$NUM_ADSR]
+		%adsr_id[0] := get_ui_id($backgr_adsr)
+		%adsr_id[1] := get_ui_id($title_adsr)
+		%adsr_id[2] := get_ui_id($lb_a_adsr)
+		%adsr_id[3] := get_ui_id($lb_d_adsr)
+		%adsr_id[4] := get_ui_id($lb_s_adsr)
+		%adsr_id[5] := get_ui_id($lb_r_adsr)
+		%adsr_id[6] := get_ui_id($lb_vol_adsr)
+		%adsr_id[7] := get_ui_id($lb_flt_adsr)
+		%adsr_id[8] := get_ui_id($vol_a_adsr)
+		%adsr_id[9] := get_ui_id($vol_d_adsr)
+		%adsr_id[10] := get_ui_id($vol_s_adsr)
+		%adsr_id[11] := get_ui_id($vol_r_adsr)
+		%adsr_id[12] := get_ui_id($flt_a_adsr)
+		%adsr_id[13] := get_ui_id($flt_d_adsr)
+		%adsr_id[14] := get_ui_id($flt_s_adsr)
+		%adsr_id[15] := get_ui_id($flt_r_adsr)
+		%adsr_id[16] := get_ui_id($vol_flt_adsr)
+
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($backgr_adsr,($GRID_X * 1) + 0, ($GRID_Y * 1) + 0) {possible to offset control in pixels}
+		move_control_px($title_adsr, ($GRID_X * 1) + 0, ($GRID_Y * 1) + 0)
+		move_control_px($lb_a_adsr, ($GRID_X * 1) + 9, ($GRID_Y * 2) + 0)
+		move_control_px($lb_d_adsr, ($GRID_X * 1) + 55, ($GRID_Y * 2) + 0)
+		move_control_px($lb_s_adsr, ($GRID_X * 2) + 9, ($GRID_Y * 2) + 0)
+		move_control_px($lb_r_adsr, ($GRID_X * 2) + 55, ($GRID_Y * 2) + 0)
+		move_control_px($lb_vol_adsr, ($GRID_X * 3) + 5, ($GRID_Y * 3) - 1)
+		move_control_px($lb_flt_adsr, ($GRID_X * 3) + 5, ($GRID_Y * 4) - 1)
+		move_control_px($vol_a_adsr, ($GRID_X * 0) + 61, ($GRID_Y * 2) + 13)
+		move_control_px($vol_d_adsr, ($GRID_X * 1) + 25, ($GRID_Y * 2) + 13)
+		move_control_px($vol_s_adsr, ($GRID_X * 1) + 81, ($GRID_Y * 2) + 13)
+		move_control_px($vol_r_adsr, ($GRID_X * 2) + 45, ($GRID_Y * 2) + 13)
+		move_control_px($flt_a_adsr, ($GRID_X * 0) + 61, ($GRID_Y * 2) + 13)
+		move_control_px($flt_d_adsr, ($GRID_X * 1) + 25, ($GRID_Y * 2) + 13)
+		move_control_px($flt_s_adsr, ($GRID_X * 1) + 81, ($GRID_Y * 2) + 13)
+		move_control_px($flt_r_adsr, ($GRID_X * 2) + 45, ($GRID_Y * 2) + 13)
+		move_control_px($vol_flt_adsr, ($GRID_X * 3) + 17, ($GRID_Y * 2) + 17)
+
+		{VARIOUS ATTRIBUTES}
+
+		set_control_par(%adsr_id[10], $CONTROL_PAR_DEFAULT_VALUE, 1000000)
+		set_control_par(%adsr_id[14], $CONTROL_PAR_DEFAULT_VALUE, 1000000)
+
+		$vol_a_adsr := _get_engine_par($ENGINE_PAR_ATTACK, $grp1_idx, $vol_env_idx, -1)
+		$vol_d_adsr := _get_engine_par($ENGINE_PAR_DECAY, $grp1_idx, $vol_env_idx, -1)
+		$vol_s_adsr := _get_engine_par($ENGINE_PAR_SUSTAIN, $grp1_idx, $vol_env_idx, -1)
+		$vol_r_adsr := _get_engine_par($ENGINE_PAR_RELEASE, $grp1_idx, $vol_env_idx, -1)
+		$flt_a_adsr := _get_engine_par($ENGINE_PAR_ATTACK, $grp1_idx, $flt_env_idx, -1)
+		$flt_d_adsr := _get_engine_par($ENGINE_PAR_DECAY, $grp1_idx, $flt_env_idx, -1)
+		$flt_s_adsr := _get_engine_par($ENGINE_PAR_SUSTAIN, $grp1_idx, $flt_env_idx, -1)
+		$flt_r_adsr := _get_engine_par($ENGINE_PAR_RELEASE, $grp1_idx, $flt_env_idx, -1)
+		
+		set_control_par_str(%adsr_id[0], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[1], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[2], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[3], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[4], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[5], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[6], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%adsr_id[7], $CONTROL_PAR_TEXT, "")
+		
+		set_control_par(%adsr_id[0], $CONTROL_PAR_WIDTH, ($GRID_X * 2) + 46)
+		set_control_par(%adsr_id[0], $CONTROL_PAR_HEIGHT, ($GRID_Y * 4))
+		set_control_par(%adsr_id[1], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+		set_control_par(%adsr_id[1], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+
+		$count := 0
+		while ($count < 8)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			inc($count)
+		end while
+		
+		$count := 8
+		while ($count < 12)
+			set_control_par_str(%adsr_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			inc($count)
+		end while
+
+		$count := 12
+		while ($count < 16)
+			set_control_par_str(%adsr_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			inc($count)
+		end while
+
+		set_control_par(%adsr_id[16], $CONTROL_PAR_VALUE, 1)
+		$count := 16
+		while ($count < 17)
+			set_control_par_str(%adsr_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_switch")
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HEIGHT, 30)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_WIDTH, 14)
+			set_control_par_str(%adsr_id[$count], $CONTROL_PAR_TEXT, "")
+			inc($count)
+		end while
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_ADSR)
+			set_control_par (%adsr_id[$count],$CONTROL_PAR_POS_X,get_control_par(%adsr_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_adsr - 2)*$GRID_X + $x_px_adsr)
+			
+			set_control_par (%adsr_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%adsr_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_adsr - 2)*$GRID_Y + $y_px_adsr) 
+			
+			inc($count)
+		end while
+		
+		set_control_par_str(get_ui_id($vol_a_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Attack")
+		set_control_par_str(get_ui_id($vol_d_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Decay")
+		set_control_par_str(get_ui_id($vol_s_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Sustain")
+		set_control_par_str(get_ui_id($vol_r_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Release")
+		
+		set_control_par_str(get_ui_id($flt_a_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Flt Att")
+		set_control_par_str(get_ui_id($flt_d_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Flt Dec")
+		set_control_par_str(get_ui_id($flt_s_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Flt Sus")
+		set_control_par_str(get_ui_id($flt_r_adsr),$CONTROL_PAR_AUTOMATION_NAME,"Flt Rel")
+		
+		set_control_par_str(get_ui_id($vol_a_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_ATTACK, $grp1_idx, $vol_env_idx, -1) & " ms")
+		set_control_par_str(get_ui_id($vol_d_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DECAY, $grp1_idx, $vol_env_idx, -1) & " ms")
+		set_control_par_str(get_ui_id($vol_s_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SUSTAIN, $grp1_idx, $vol_env_idx, -1) & " dB")
+		set_control_par_str(get_ui_id($vol_r_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RELEASE, $grp1_idx, $vol_env_idx, -1) & " ms")
+		
+		set_control_par_str(get_ui_id($flt_a_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_ATTACK, $grp1_idx, $flt_env_idx, -1) & " ms")
+		set_control_par_str(get_ui_id($flt_d_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DECAY, $grp1_idx, $flt_env_idx, -1) & " ms")
+		set_control_par_str(get_ui_id($flt_s_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SUSTAIN, $grp1_idx, $flt_env_idx, -1) & " dB")
+		set_control_par_str(get_ui_id($flt_r_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RELEASE, $grp1_idx, $flt_env_idx, -1) & " ms")
+		
+			
+	{*** END CONTROL GROUP "ADSR"}
+
+	{*** CONTROL GROUP "SYNTHFX"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_synthfx := 3 {X Position of Control Group in grid}
+		declare $y_grid_synthfx := 9 {Y Position of Control Group in grid}
+		declare $x_px_synthfx := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_synthfx := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $num_ir_samples := 10 {the number of ir samples used in this instrument group}
+		declare const $NUM_SYNTHFX := 47 {number of elements in this control group}
+
+		declare ui_label $backgr_synthfx (1,1)
+		declare ui_label $title_synthfx (1,1)
+		declare ui_label $lb_rev_synthfx (1,1)
+		declare ui_label $lb_chorus_synthfx (1,1)
+		declare ui_label $lb_delay_synthfx (1,1)
+		declare ui_label $lb_rev_onoff_synthfx (1,1)
+		declare ui_label $lb_rev_room_synthfx (1,1)
+		declare ui_label $lb_rev_amount_synthfx (1,1)
+		declare ui_label $image_reverb (1,1)
+		declare ui_label $lb_chorus_onoff_synthfx (1,1)
+		declare ui_label $lb_chorus_depth_synthfx (1,1)
+		declare ui_label $lb_chorus_speed_synthfx (1,1)
+		declare ui_label $lb_chorus_amount_synthfx (1,1)
+		declare ui_label $lb_delay_onoff_synthfx (1,1)
+		declare ui_label $lb_delay_feedback_synthfx (1,1)
+		declare ui_label $lb_delay_time_synthfx (1,1)
+		declare ui_label $lb_delay_amount_synthfx (1,1)
+		declare ui_slider $rev_amount_synthfx (0, 1000000)
+		declare ui_slider $chorus_depth_synthfx (0, 1000000)
+		declare ui_slider $chorus_speed_synthfx (0, 1000000)
+		declare ui_slider $chorus_amount_synthfx (0, 1000000)
+		declare ui_slider $delay_feedback_synthfx (0, 1000000)
+		declare ui_slider $delay_time_synthfx (0, 1000000)
+		declare ui_slider $delay_amount_synthfx (0, 1000000)
+		
+		declare ui_button $rev_synthfx
+		declare ui_button $chorus_synthfx
+		declare ui_button $delay_synthfx
+		
+		declare ui_switch $rev_onoff_synthfx
+		declare ui_switch $chorus_onoff_synthfx
+		declare ui_switch $delay_onoff_synthfx
+		
+		declare ui_menu $category_reverb
+		declare ui_label $amount_ring_synthfx (1,1)
+		declare ui_label $first_ring_synthfx (1,1)
+		declare ui_label $second_ring_synthfx (1,1)
+		declare ui_label $reverb_button_bg_synthfx (1,1)
+		declare ui_label $chorus_button_bg_synthfx(1,1)
+		declare ui_label $delay_button_bg_synthfx (1,1)
+
+		{reverb functionality}
+		declare ui_menu $hall_reverb
+		declare ui_menu $cathedral_reverb
+		declare ui_menu $club_reverb
+		declare ui_menu $room_reverb
+		declare ui_menu $l300_reverb
+		declare ui_menu $quadstick_reverb
+		declare ui_menu $brt7_reverb
+		declare ui_menu $plate_reverb
+		declare ui_menu $cabinet_reverb
+	
+		declare %subcat_menu_id[9]
+		%subcat_menu_id[0] := get_ui_id($hall_reverb)
+		%subcat_menu_id[1] := get_ui_id($cathedral_reverb)
+		%subcat_menu_id[2] := get_ui_id($club_reverb)
+		%subcat_menu_id[3] := get_ui_id($room_reverb)
+		%subcat_menu_id[4] := get_ui_id($l300_reverb)
+		%subcat_menu_id[6] := get_ui_id($quadstick_reverb)
+		%subcat_menu_id[7] := get_ui_id($brt7_reverb)
+		%subcat_menu_id[5] := get_ui_id($plate_reverb)
+		%subcat_menu_id[8] := get_ui_id($cabinet_reverb) 
+
+		declare %offset_reverb[9] := (0,3,6,14,21,52,34,42,62)
+		
+		{Skin the subcategory menus}
+		$count := 0
+		while($count < 9)
+			set_control_par_str(%subcat_menu_id[$count],$CONTROL_PAR_PICTURE,"pv_synth_master_fx_reverb_dropdown_bottom")
+			set_control_par(%subcat_menu_id[$count], $CONTROL_PAR_POS_X, ($GRID_X * 2) + 88)
+			set_control_par(%subcat_menu_id[$count], $CONTROL_PAR_POS_Y, ($GRID_Y * 5) + 9)
+			set_control_par(%subcat_menu_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID_2)			
+			inc($count)
+		end while
+	
+		set_control_par_str(get_ui_id($image_reverb),$CONTROL_PAR_PICTURE,"pv_global_reverb_animation_small")
+	
+		{Fill the menus}
+		add_menu_item($category_reverb, "CONCERT HALL", 0)
+		add_menu_item($category_reverb, "CATHEDRAL", 1)
+		add_menu_item($category_reverb, "CLUB", 2)
+		add_menu_item($category_reverb, "ROOM", 3)
+		add_menu_item($category_reverb, "L300", 4)
+		add_menu_item($category_reverb, "QUADSTICK", 6)
+		add_menu_item($category_reverb, "BRT 7", 7)
+		add_menu_item($category_reverb, "PLATE", 5)
+		add_menu_item($category_reverb, "CABINET", 8)
+	
+		declare !ir_path[68]
+		!ir_path[0] := "Concert Hall A.wav"
+		!ir_path[1] := "Concert Hall B.wav"
+		!ir_path[2] := "Exhibition Hall.wav"
+		!ir_path[3] := "Cathedral A.wav"
+		!ir_path[4] := "Cathedral B.wav"
+		!ir_path[5] := "2.9s Bright Cathedral - Synthetic.wav"
+		!ir_path[6] := "Club A.wav"
+		!ir_path[7] := "Club B.wav"
+		!ir_path[8] := "Tavern Close.wav"
+		!ir_path[9] := "Tavern Near.wav"
+		!ir_path[10] := "Tavern Medium.wav"
+		!ir_path[11] := "Tavern Far.wav"
+		!ir_path[12] := "Auditorium A.wav"
+		!ir_path[13] := "Auditorium B.wav"
+		!ir_path[14] := "Chamber A.wav"
+		!ir_path[15] := "Chamber B.wav"
+		!ir_path[16] := "Rehearsal Room.wav"
+		!ir_path[17] := "Hard Wood Room B.wav"
+		!ir_path[18] := "Music Studio C.wav"
+		!ir_path[19] := "Small Room A.wav"
+		!ir_path[20] := "Small Room B.wav"
+		!ir_path[21] := "L300 Large Hall.wav"
+		!ir_path[22] := "L300 Gated Hall.wav"
+		!ir_path[23] := "L300 Large Room.wav"
+		!ir_path[24] := "L300 Large Chamber.wav"
+		!ir_path[25] := "L300 Studio C.wav"
+		!ir_path[26] := "L300 Contem-Plate.wav"
+		!ir_path[27] := "L300 Space & Echoes.wav"
+		!ir_path[28] := "L300 Medium Stop.wav"
+		!ir_path[29] := "L300 Drum Cave.wav"
+		!ir_path[30] := "L300 Large Ambience.wav"
+		!ir_path[31] := "L300 Smooth Ambience.wav"
+		!ir_path[32] := "L300 Ambience Wave.wav"
+		!ir_path[33] := "L300 Le Gate.wav"
+		!ir_path[34] := "Quadstick Small - Basic.wav"
+		!ir_path[35] := "Quadstick Small - Disco.wav"
+		!ir_path[36] := "Quadstick Small - Funk.wav"
+		!ir_path[37] := "Quadstick Small - Funky Club.wav"
+		!ir_path[38] := "Quadstick Small - Hip Hop.wav"
+		!ir_path[39] := "Quadstick Small - Reggae Modern.wav"
+		!ir_path[40] := "Quadstick Small - RnB Neptunes.wav"
+		!ir_path[41] := "Quadstick Small - RnB Today 1.wav"
+		!ir_path[42] := "BRT 7 Ambience Large A.wav"
+		!ir_path[43] := "BRT 7 Ambience Small.wav"
+		!ir_path[44] := "BRT 7 Chamber Small.wav"
+		!ir_path[45] := "BRT 7 Chamber Vocal.wav"
+		!ir_path[46] := "BRT 7 Hall Dense.wav"
+		!ir_path[47] := "BRT 7 Location Chapel A.wav"
+		!ir_path[48] := "BRT 7 Plate Snare.wav"
+		!ir_path[49] := "BRT 7 Room Drum.wav"
+		!ir_path[50] := "BRT 7 Room Wood.wav"
+		!ir_path[51] := "BRT 7 Location Cineastic Room.wav"
+		!ir_path[52] := "E245 0.5s A.wav"
+		!ir_path[53] := "E245 1.0s A.wav"
+		!ir_path[54] := "E245 1.4s A.wav"
+		!ir_path[55] := "E245 2.1s A.wav"
+		!ir_path[56] := "E245 4.5s A.wav"
+		!ir_path[57] := "E252 0.6s.wav"
+		!ir_path[58] := "E252 1.0s.wav"
+		!ir_path[59] := "E252 1.8s.wav"
+		!ir_path[60] := "E252 3.0s.wav"
+		!ir_path[61] := "E252 4.5s.wav"
+		!ir_path[62] := "Brit_212_Tube_Center.wav"
+		!ir_path[63] := "Tweed_112_Tube_Center.wav"
+		!ir_path[64] := "Tweed_212_Tube_Center.wav"
+		!ir_path[65] := "Tweed_410_Tube_Center.wav"
+		!ir_path[66] := "Rock_412_Tube_Center.wav"
+		!ir_path[67] := "Modern_412_Tube_Center.wav"
+
+		
+		declare !ir_type[68]
+		!ir_type[0] := "HALL A"
+		!ir_type[1] := "HALL B"
+		!ir_type[2] := "EXHIBIT HALL"
+		!ir_type[3] := "CATHEDRAL A"
+		!ir_type[4] := "CATHEDRAL B"
+		!ir_type[5] := "CATHEDRAL C"
+		!ir_type[6] := "CLUB A"
+		!ir_type[7] := "CLUB B"
+		!ir_type[8] := "TAVERN CLOSE"
+		!ir_type[9] := "TAVERN NEAR"
+		!ir_type[10] := "TAVERN MID"
+		!ir_type[11] := "TAVERN FAR"
+		!ir_type[12] := "AUDITORIUM A"
+		!ir_type[13] := "AUDITORIUM B"
+		!ir_type[14] := "CHAMBER A"
+		!ir_type[15] := "CHAMBER B"
+		!ir_type[16] := "REHEARSAL"
+		!ir_type[17] := "HARD WOOD"
+		!ir_type[18] := "MUSIC STUDIO"
+		!ir_type[19] := "SMALL ROOM A"
+		!ir_type[20] := "SMALL ROOM B"
+		!ir_type[21] := "LARGE HALL"
+		!ir_type[22] := "GATED HALL"
+		!ir_type[23] := "LARGE ROOM"
+		!ir_type[24] := "LRG CHAMBER"
+		!ir_type[25] := "STUDIO C"
+		!ir_type[26] := "PLATE"
+		!ir_type[27] := "ECHOES"
+		!ir_type[28] := "MEDIUM STOP"
+		!ir_type[29] := "DRUM CAVE"
+		!ir_type[30] := "LARGE AMBI"
+		!ir_type[31] := "SMOOTH AMBI"
+		!ir_type[32] := "AMBI WAVE"
+		!ir_type[33] := "LE GATE"
+		!ir_type[34] := "BASIC"
+		!ir_type[35] := "DISCO"
+		!ir_type[36] := "FUNK"
+		!ir_type[37] := "FUNKY CLUB"
+		!ir_type[38] := "HIP HOP"
+		!ir_type[39] := "REGGAE MOD"
+		!ir_type[40] := "RNB NEPTUNE"
+		!ir_type[41] := "RNB TODAY"
+		!ir_type[42] := "LARGE AMBI"
+		!ir_type[43] := "SMALL AMBI"
+		!ir_type[44] := "SML CHAMBER"
+		!ir_type[45] := "VOC CHAMBER"
+		!ir_type[46] := "DENSE HALL"
+		!ir_type[47] := "CHAPEL"
+		!ir_type[48] := "SNARE PLATE"
+		!ir_type[49] := "DRUM ROOM"
+		!ir_type[50] := "WOOD ROOM"
+		!ir_type[51] := "CINEASTIC"
+		!ir_type[52] := "E245 0.5s"
+		!ir_type[53] := "E245 1.0s"
+		!ir_type[54] := "E245 1.4s"
+		!ir_type[55] := "E245 2.1s"
+		!ir_type[56] := "E245 4.5s"
+		!ir_type[57] := "E252 0.6s"
+		!ir_type[58] := "E252 1.0s"
+		!ir_type[59] := "E252 1.8s"
+		!ir_type[60] := "E252 3.0s"
+		!ir_type[61] := "E252 4.5s"
+		!ir_type[62] := "BRIT 2x12"
+		!ir_type[63] := "TWEED 1x12"
+		!ir_type[64] := "TWEED 2x12"
+		!ir_type[65] := "TWEED 4x10"
+		!ir_type[66] := "ROCK 4x12"
+		!ir_type[67] := "MODERN 4x12"
+	
+		$count := 0
+		while ($count < 68)
+			if ($count < 3)
+				add_menu_item($hall_reverb,!ir_type[$count],$count)
+			else
+				if ($count < 6)
+					add_menu_item($cathedral_reverb,!ir_type[$count],$count)
+				else
+					if ($count < 14)
+						add_menu_item($club_reverb,!ir_type[$count],$count)
+					else
+						if ($count < 21)
+							add_menu_item($room_reverb,!ir_type[$count],$count)
+						else
+							if ($count < 34)
+							add_menu_item($l300_reverb,!ir_type[$count],$count)
+							else
+								if($count < 42)
+									add_menu_item($quadstick_reverb,!ir_type[$count],$count)
+								else
+									if ($count < 52)
+										add_menu_item($brt7_reverb,!ir_type[$count],$count)
+									else
+										if ($count < 62)
+											add_menu_item($plate_reverb,!ir_type[$count],$count)
+										else
+											add_menu_item($cabinet_reverb,!ir_type[$count],$count)
+										end if
+									end if
+								end if
+							end if
+						end if
+					end if
+				end if
+			end if
+			inc ($count)
+		end while
+		
+		make_persistent($category_reverb)
+		make_persistent($hall_reverb)
+		make_persistent($cathedral_reverb)
+		make_persistent($club_reverb)
+		make_persistent($room_reverb)
+		make_persistent($l300_reverb)
+		make_persistent($quadstick_reverb)
+		make_persistent($brt7_reverb)
+		make_persistent($plate_reverb)
+		make_persistent($cabinet_reverb)
+		
+		_read_persistent_var($category_reverb)
+		_read_persistent_var($hall_reverb)
+		_read_persistent_var($cathedral_reverb)
+		_read_persistent_var($club_reverb)
+		_read_persistent_var($room_reverb)
+		_read_persistent_var($l300_reverb)
+		_read_persistent_var($quadstick_reverb)
+		_read_persistent_var($brt7_reverb)
+		_read_persistent_var($plate_reverb)
+		_read_persistent_var($cabinet_reverb)
+		
+		$count := 0
+		while ($count < 9)
+			if ($count = $category_reverb)
+				set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_PART_NOTHING)
+			else
+				set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_WHOLE_CONTROL)
+			end if
+			inc ($count)
+		end while
+		
+		set_control_par(get_ui_id($image_reverb),$CONTROL_PAR_PICTURE_STATE,$category_reverb)
+		
+		{/reverb functionality}
+	
+		declare %synthfx_id[$NUM_SYNTHFX]
+		%synthfx_id[0] := get_ui_id($backgr_synthfx)
+		%synthfx_id[1] := get_ui_id($title_synthfx)
+		%synthfx_id[2] := get_ui_id($lb_rev_synthfx)
+		%synthfx_id[3] := get_ui_id($lb_chorus_synthfx)
+		%synthfx_id[4] := get_ui_id($lb_delay_synthfx)
+		%synthfx_id[5] := get_ui_id($lb_rev_onoff_synthfx)
+		%synthfx_id[6] := get_ui_id($lb_rev_room_synthfx)
+		%synthfx_id[7] := get_ui_id($lb_rev_amount_synthfx)
+		%synthfx_id[8] := get_ui_id($image_reverb)
+		%synthfx_id[9] := get_ui_id($lb_chorus_onoff_synthfx)
+		%synthfx_id[10] := get_ui_id($lb_chorus_depth_synthfx)
+		%synthfx_id[11] := get_ui_id($lb_chorus_speed_synthfx)
+		%synthfx_id[12] := get_ui_id($lb_chorus_amount_synthfx)
+		%synthfx_id[13] := get_ui_id($lb_delay_onoff_synthfx)
+		%synthfx_id[14] := get_ui_id($lb_delay_feedback_synthfx)
+		%synthfx_id[15] := get_ui_id($lb_delay_time_synthfx)
+		%synthfx_id[16] := get_ui_id($lb_delay_amount_synthfx)
+		%synthfx_id[17] := get_ui_id($rev_amount_synthfx)
+		%synthfx_id[18] := get_ui_id($chorus_depth_synthfx)
+		%synthfx_id[19] := get_ui_id($chorus_speed_synthfx)
+		%synthfx_id[20] := get_ui_id($chorus_amount_synthfx)
+		%synthfx_id[21] := get_ui_id($delay_feedback_synthfx)
+		%synthfx_id[22] := get_ui_id($delay_time_synthfx)
+		%synthfx_id[23] := get_ui_id($delay_amount_synthfx)	   
+		%synthfx_id[24] := get_ui_id($rev_synthfx)
+		%synthfx_id[25] := get_ui_id($chorus_synthfx)
+		%synthfx_id[26] := get_ui_id($delay_synthfx)
+		%synthfx_id[27] := get_ui_id($rev_onoff_synthfx)
+		%synthfx_id[28] := get_ui_id($chorus_onoff_synthfx)
+		%synthfx_id[29] := get_ui_id($delay_onoff_synthfx)
+		%synthfx_id[30] := get_ui_id($category_reverb)
+		%synthfx_id[32] := get_ui_id($amount_ring_synthfx)
+		%synthfx_id[33] := get_ui_id($first_ring_synthfx)
+		%synthfx_id[34] := get_ui_id($second_ring_synthfx)
+		%synthfx_id[35] := get_ui_id($hall_reverb)
+		%synthfx_id[36] := get_ui_id($cathedral_reverb)
+		%synthfx_id[37] := get_ui_id($club_reverb)
+		%synthfx_id[38] := get_ui_id($room_reverb)
+		%synthfx_id[39] := get_ui_id($l300_reverb)
+		%synthfx_id[40] := get_ui_id($quadstick_reverb)
+		%synthfx_id[41] := get_ui_id($brt7_reverb)
+		%synthfx_id[42] := get_ui_id($plate_reverb)
+		%synthfx_id[43] := get_ui_id($cabinet_reverb)
+		%synthfx_id[44] := get_ui_id($reverb_button_bg_synthfx)
+		%synthfx_id[45] := get_ui_id($chorus_button_bg_synthfx)
+		%synthfx_id[46] := get_ui_id($delay_button_bg_synthfx)
+
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($backgr_synthfx,($GRID_X * 1) + 0, ($GRID_Y * 1) + 0) {possible to offset control in pixels}
+		move_control_px($title_synthfx, ($GRID_X * 1) + 0, ($GRID_Y * 1) + 0)
+		move_control_px($lb_rev_synthfx, ($GRID_X * 1) + 0, ($GRID_Y * 2) + 0)
+		move_control_px($lb_chorus_synthfx, ($GRID_X * 1) + 46, ($GRID_Y * 2) + 0)
+		move_control_px($lb_delay_synthfx, ($GRID_X * 2) + 0, ($GRID_Y * 2) + 0)
+		move_control_px($lb_rev_onoff_synthfx, ($GRID_X * 2) + 46, ($GRID_Y * 2) + 0)
+		move_control_px($lb_rev_room_synthfx, ($GRID_X * 2) + 46, ($GRID_Y * 4) + 0)
+		move_control_px($lb_rev_amount_synthfx, ($GRID_X * 3) + 86, ($GRID_Y * 4) + 18)
+		move_control_px($image_reverb, ($GRID_X * 2) + 89, ($GRID_Y * 3) + 6)
+		move_control_px($lb_chorus_onoff_synthfx, ($GRID_X * 2) + 46, ($GRID_Y * 2) + 0)
+		move_control_px($lb_chorus_depth_synthfx, ($GRID_X * 2) + 64, ($GRID_Y * 4) + 18)
+		move_control_px($lb_chorus_speed_synthfx, ($GRID_X * 3) + 29, ($GRID_Y * 4) + 18)
+		move_control_px($lb_chorus_amount_synthfx, ($GRID_X * 3) + 86, ($GRID_Y * 4) + 18)
+		move_control_px($lb_delay_onoff_synthfx, ($GRID_X * 2) + 46, ($GRID_Y * 2) + 0)
+		move_control_px($lb_delay_feedback_synthfx, ($GRID_X * 2) + 64, ($GRID_Y * 4) + 18)
+		move_control_px($lb_delay_time_synthfx, ($GRID_X * 3) + 29, ($GRID_Y * 4) + 18)
+		move_control_px($lb_delay_amount_synthfx, ($GRID_X * 3) + 86, ($GRID_Y * 4) + 18)
+		move_control_px($rev_amount_synthfx, ($GRID_X * 4) + 22, ($GRID_Y * 3) + 8)
+		move_control_px($chorus_depth_synthfx, ($GRID_X * 3) + 0, ($GRID_Y * 3) + 8)
+		move_control_px($chorus_speed_synthfx, ($GRID_X * 3) + 57, ($GRID_Y * 3) + 8)
+		move_control_px($chorus_amount_synthfx, ($GRID_X * 4) + 22, ($GRID_Y * 3) + 8)
+		move_control_px($delay_feedback_synthfx, ($GRID_X * 3) + 0, ($GRID_Y * 3) + 8)
+		move_control_px($delay_time_synthfx, ($GRID_X * 3) + 57, ($GRID_Y * 3) + 8)
+		move_control_px($delay_amount_synthfx, ($GRID_X * 4) + 22, ($GRID_Y * 3) + 8)
+		move_control_px($rev_synthfx, ($GRID_X * 1) + 101, ($GRID_Y * 2) + 9)
+		move_control_px($chorus_synthfx, ($GRID_X * 1) + 101, ($GRID_Y * 3) + 16)
+		move_control_px($delay_synthfx, ($GRID_X * 1) + 101, ($GRID_Y * 4) + 23)
+		move_control_px($rev_onoff_synthfx, ($GRID_X * 1) + 77, ($GRID_Y * 2) + 9)
+		move_control_px($chorus_onoff_synthfx, ($GRID_X * 1) + 77, ($GRID_Y * 3) + 16)
+		move_control_px($delay_onoff_synthfx, ($GRID_X * 1) + 77, ($GRID_Y * 4) + 23)
+		move_control_px($category_reverb, ($GRID_X * 2) + 88, ($GRID_Y * 2) + 11)
+		move_control_px($amount_ring_synthfx, ($GRID_X * 4) + 19, ($GRID_Y * 3) + 5)
+		move_control_px($first_ring_synthfx, ($GRID_X * 2) + 89, ($GRID_Y * 3) + 5)
+		move_control_px($second_ring_synthfx, ($GRID_X * 3) + 54, ($GRID_Y * 3) + 5)
+		move_control_px($reverb_button_bg_synthfx, ($GRID_X * 1) + 73, ($GRID_Y * 2) + 8)
+		move_control_px($chorus_button_bg_synthfx, ($GRID_X * 1) + 73, ($GRID_Y * 3) + 15)
+		move_control_px($delay_button_bg_synthfx, ($GRID_X * 1) + 73, ($GRID_Y * 4) + 22)
+		
+		
+		{VARIOUS ATTRIBUTES}
+		
+		$rev_amount_synthfx := _get_engine_par($ENGINE_PAR_SENDLEVEL_0, -1, 7, 1)
+		$rev_onoff_synthfx := (_get_engine_par($ENGINE_PAR_SEND_EFFECT_BYPASS, -1, $reverb_slot, 0) + 1) mod 2
+		$delay_feedback_synthfx := _get_engine_par($ENGINE_PAR_DL_FEEDBACK, -1, $delay_slot, 1)
+		$delay_time_synthfx := _get_engine_par($ENGINE_PAR_DL_TIME, -1, $delay_slot, 1)
+		$delay_amount_synthfx := _get_engine_par($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $delay_slot, 1)
+		$delay_onoff_synthfx := (_get_engine_par($ENGINE_PAR_EFFECT_BYPASS, -1, $delay_slot, 1) + 1) mod 2
+		$chorus_depth_synthfx := _get_engine_par($ENGINE_PAR_CH_DEPTH, -1, $chorus_slot, 1)
+		$chorus_speed_synthfx := _get_engine_par($ENGINE_PAR_CH_SPEED, -1, $chorus_slot, 1)
+		$chorus_amount_synthfx := _get_engine_par($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $chorus_slot, 1)
+		$chorus_onoff_synthfx := (_get_engine_par($ENGINE_PAR_EFFECT_BYPASS, -1, $chorus_slot, 1) + 1) mod 2
+		
+		make_persistent($category_reverb)
+		
+		set_control_par_str(%synthfx_id[0], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[1], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[2], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[3], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[4], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[5], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[6], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[7], $CONTROL_PAR_TEXT, "AMOUNT")
+		set_control_par_str(%synthfx_id[8], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[9], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[10], $CONTROL_PAR_TEXT, "DEPTH")
+		set_control_par_str(%synthfx_id[11], $CONTROL_PAR_TEXT, "SPEED")
+		set_control_par_str(%synthfx_id[12], $CONTROL_PAR_TEXT, "AMOUNT")
+		set_control_par_str(%synthfx_id[13], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[14], $CONTROL_PAR_TEXT, "FEEDBACK")
+		set_control_par_str(%synthfx_id[15], $CONTROL_PAR_TEXT, "TIME")
+		set_control_par_str(%synthfx_id[16], $CONTROL_PAR_TEXT, "AMOUNT")
+		set_control_par_str(%synthfx_id[32], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[33], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[34], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[44], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[45], $CONTROL_PAR_TEXT, "")
+		set_control_par_str(%synthfx_id[46], $CONTROL_PAR_TEXT, "")
+		
+		set_control_par(%synthfx_id[0], $CONTROL_PAR_WIDTH, ($GRID_X * 2) + 46)
+		set_control_par(%synthfx_id[0], $CONTROL_PAR_HEIGHT, ($GRID_Y * 8))
+		set_control_par(%synthfx_id[1], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+		set_control_par(%synthfx_id[1], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+
+		$count := 0
+		while ($count < 17)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_WIDTH, ($GRID_X * 1))
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HEIGHT, ($GRID_Y * 1))
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			inc($count)
+		end while
+		
+		set_control_par(%synthfx_id[8], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		
+		$count := 17
+		while ($count < 24)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			inc($count)
+		end while
+
+		set_control_par_str(%synthfx_id[17], $CONTROL_PAR_PICTURE, "pv_synth_knob_main")
+		set_control_par_str(%synthfx_id[18], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%synthfx_id[19], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%synthfx_id[20], $CONTROL_PAR_PICTURE, "pv_synth_knob_main")
+		set_control_par_str(%synthfx_id[21], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%synthfx_id[22], $CONTROL_PAR_PICTURE, "pv_synth_knob_red")
+		set_control_par_str(%synthfx_id[23], $CONTROL_PAR_PICTURE, "pv_synth_knob_main")
+
+		set_control_par(%synthfx_id[24], $CONTROL_PAR_VALUE, 1)
+		$count := 24
+		while ($count < 27)
+			set_control_par_str(%synthfx_id[$count], $CONTROL_PAR_PICTURE, "pv_vintage_drums_btn_trans")
+			set_control_par_str(%synthfx_id[$count], $CONTROL_PAR_TEXT, "")
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HEIGHT, 25)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_WIDTH, 50)
+			inc($count)
+		end while
+		
+		set_control_par(%synthfx_id[44], $CONTROL_PAR_PICTURE_STATE, 1)
+
+		$count := 27
+		while ($count < 30)
+			set_control_par_str(%synthfx_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_button_small")
+			set_control_par_str(%synthfx_id[$count], $CONTROL_PAR_TEXT, "")
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HEIGHT, 23)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_WIDTH, 23)
+			inc($count)
+		end while
+		
+		set_control_par_str(%synthfx_id[30], $CONTROL_PAR_PICTURE, "pv_synth_master_fx_reverb_dropdown_top")
+		set_control_par(%synthfx_id[30], $CONTROL_PAR_FONT_TYPE, $FONT_ID_2)
+		set_control_par_str(%synthfx_id[32], $CONTROL_PAR_PICTURE, "pv_synth_knob_scale_solid")
+		set_control_par_str(%synthfx_id[33], $CONTROL_PAR_PICTURE, "pv_synth_knob_scale_dark")
+		set_control_par_str(%synthfx_id[34], $CONTROL_PAR_PICTURE, "pv_synth_knob_scale_dark")
+		
+		set_control_par_str(%synthfx_id[44], $CONTROL_PAR_PICTURE, "pv_synth_master_fx_tab_reverb")
+		set_control_par_str(%synthfx_id[45], $CONTROL_PAR_PICTURE, "pv_synth_master_fx_tab_chorus")
+		set_control_par_str(%synthfx_id[46], $CONTROL_PAR_PICTURE, "pv_synth_master_fx_tab_delay")
+
+		{Hide the Chorus and Delay Elements}
+		
+		$count := 9
+		while ($count < 13)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%synthfx_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			inc($count)
+		end while
+		set_control_par(%synthfx_id[18], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[19], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[20], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[21], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[22], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[23], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[33], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[34], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_SYNTHFX)
+			if ($count # 31)
+			set_control_par (%synthfx_id[$count],$CONTROL_PAR_POS_X,get_control_par(%synthfx_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_synthfx - 2)*$GRID_X + $x_px_synthfx)
+			
+			set_control_par (%synthfx_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%synthfx_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_synthfx - 2)*$GRID_Y + $y_px_synthfx) 
+			end if
+			inc($count)
+		end while
+		
+		set_control_par_str(get_ui_id($rev_onoff_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Reverb")
+		set_control_par_str(get_ui_id($chorus_onoff_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Chorus")
+		set_control_par_str(get_ui_id($delay_onoff_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Delay")
+		
+		set_control_par_str(get_ui_id($rev_amount_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Rv Amt")
+		set_control_par_str(get_ui_id($chorus_depth_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Ch Dep")
+		set_control_par_str(get_ui_id($chorus_speed_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Ch Spd")
+		set_control_par_str(get_ui_id($chorus_amount_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Ch Amt")
+		set_control_par_str(get_ui_id($delay_feedback_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Del Fb")
+		set_control_par_str(get_ui_id($delay_time_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"D Time")
+		set_control_par_str(get_ui_id($delay_amount_synthfx),$CONTROL_PAR_AUTOMATION_NAME,"Dl Amt")
+		
+		set_control_par_str(get_ui_id($rev_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SENDLEVEL_0, -1, 7, 1) & " dB")
+		set_control_par_str(get_ui_id($chorus_depth_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CH_DEPTH, -1, $chorus_slot, 1) & " %")
+		set_control_par_str(get_ui_id($chorus_speed_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CH_SPEED, -1, $chorus_slot, 1) & " Hz")
+		set_control_par_str(get_ui_id($chorus_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $chorus_slot, 1) & " dB")
+		set_control_par_str(get_ui_id($delay_feedback_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DL_FEEDBACK, -1, $delay_slot, 1) & " %")
+		set_control_par_str(get_ui_id($delay_time_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DL_TIME, -1, $delay_slot, 1) & " ms")
+		set_control_par_str(get_ui_id($delay_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $delay_slot, 1) & " dB")
+		
+	{*** END CONTROL GROUP "SYNTHFX"}
+	
+	{Control Help}
+
+		set_control_help($cutoff_filter,"Cutoff: Controls the cutoff frequency of the filter.")
+		set_control_help($resonance_filter,"Resonance: Controls the strength of the resonant peak at the cutoff frequency.")
+		set_control_help($vel_filter,"Velocity Sensitivity: Controls the amount of modulation applied from the MIDI velocity to the filter cutoff frequency.")
+		set_control_help($env_filter,"ENV Amount: Controls the amount of modulation applied from the filter envelope to the filter cutoff frequency.")
+		set_control_help($sound_filter,"Sound: Morphs through various EQ settings.")
+		set_control_help($hp_filter,"HP: Activates the highpass filter.")
+		set_control_help($lp_filter,"LP: Activates the lowpass filter.")
+		
+		set_control_help($vola_mix,"Vol A: Sets the volume of the first synth layer.")
+		set_control_help($volb_mix,"Vol B: Sets the volume of the second synth layer.")
+		set_control_help($spread_mix,"Spread: Controls the spread amount of the sound output. The first half of its range spreads the two sample sets in the stereo field, and the second half adds a subtle detuning effect.")
+		set_control_help($onoffa_mix,"Part A: Turns the first synth layer on or off.")
+		set_control_help($onoffb_mix,"Part B: Turns the second synth layer on or off.")
+		
+		set_control_help($vol_flt_adsr,"Vol/Filter Envelope: Switches between the volume and the filter envelope controls.")
+		
+		set_control_help($vol_a_adsr,"Attack: Controls the time the volume envelope will take to fade to its maximum level.")
+		set_control_help($vol_d_adsr,"Decay: Controls the time taken for the volume envelope to fall from its maximum setting to the level set by the <Sustain> control.")
+		set_control_help($vol_s_adsr,"Sustain: Controls the level at which the volume envelope will stay as long as a note is held, after the attack, hold and decay phases are completed.")
+		set_control_help($vol_r_adsr,"Release: Controls the time the volume envelope will take to return to zero from the sustain level after the note trigger is released.")
+		
+		set_control_help($flt_a_adsr,"Attack: Controls the time the filter envelope will take to fade to its maximum level.")
+		set_control_help($flt_d_adsr,"Decay: Controls the time taken for the filter envelope to fall from its maximum setting to the level set by the <Sustain> control.")
+		set_control_help($flt_s_adsr,"Sustain: Controls the level at which the filter envelope will stay as long as a note is held, after the attack, hold and decay phases are completed.")
+		set_control_help($flt_r_adsr,"Release: Controls the time the filter envelope will take to return to zero from the sustain level after the note trigger is released.")
+		
+		set_control_help($glide_voicing,"Glide: Turns pitch glide on or off, the rate of the glide can be controlled with the <Glide Time> control.")
+		set_control_help($glidetime_voicing,"Glide Time: Controls the glissando time between notes when <Glide> is set to <On>.")
+		set_control_help($solo_voicing,"Solo: Sets the instrument polyphony to 1 voice, making it monophonic.")
+		set_control_help($legato_voicing,"Legato: With this switch active, when you play in a legato style Kontakt will transpose the current sample, rather than triggering a new sample.")
+		set_control_help($chord_onoff_voicing,"Chord: turns chord mode on or off. The chord type can be selected using the <Preset> knob.")
+		set_control_help($chord_voicing,"Chord Preset: Selects the chord type played when <Chord> is set to <On>.")
+		
+		set_control_help($rev_synthfx, "Reverb: Displays the controls for the reverb effect.")
+		set_control_help($chorus_synthfx, "Chorus: Displays the controls for the chorus effect.")
+		set_control_help($delay_synthfx, "Delay: Displays the controls for the delay effect.")
+		
+		set_control_help($rev_onoff_synthfx, "Reverb On/Off: Turns the reverb effect on or off.")
+		set_control_help($chorus_onoff_synthfx, "Chorus On/Off: Turns the chorus effect on or off.")
+		set_control_help($delay_onoff_synthfx, "Reverb On/Off: Turns the delay effect on or off.")
+		
+		set_control_help($rev_amount_synthfx, "Reverb Amount: Sets the send level of the reverb effect.")
+		set_control_help($category_reverb, "Reverb IR Category: Select a category from which you can choose a specific Impulse response from the second dropdown menu.")
+		set_control_help($hall_reverb, "Concert Hall: Impulse responses in this category are capured from real spaces and represent a variety of large performance spaces.")
+		set_control_help($cathedral_reverb, "Cathedral: A mix of real and modelled spaces that offer large and dense reverb tails.")
+		set_control_help($club_reverb, "Club: Impulse responses in this category are capured from real spaces and represent a variety of small performance spaces.")
+		set_control_help($room_reverb, "Room: Impulse responses in this category are capured from real spaces and cover a variety of smaller rooms.")
+		set_control_help($l300_reverb, "L300: Impulse responses taken from the classic studio digital reverb.")
+		set_control_help($plate_reverb, "Plate: Impulse responses from classic plate reverb effect units.")
+		set_control_help($quadstick_reverb, "Quadstick: Impulse responses taken from the classic studio digital reverb.")
+		set_control_help($brt7_reverb, "BRT 7: Impulse responses taken from the classic studio digital reverb.")
+		set_control_help($cabinet_reverb, "Cabinet: Impulse responses of several cabinet types.")
+		
+		set_control_help($chorus_depth_synthfx, "Chorus Depth: Sets the amount of LFO modulation applied to the sound. Higher amounts result in a stronger chorusing effect.")
+		set_control_help($chorus_speed_synthfx, "Chorus Speed: Sets the speed of the LFO modulating the sound.")
+		set_control_help($chorus_amount_synthfx, "Chorus Amount:  Sets the output volume of the chorus send effect.")
+		
+		set_control_help ($delay_feedback_synthfx, "Delay Feedback: Controls the amount of signal from the delay effect output that is fed back into the delay effect input.")
+		set_control_help ($delay_time_synthfx, "Delay Time: Sets the amount of time between the original input and the delayed output signal.")
+		set_control_help ($delay_amount_synthfx, "Delay Return: Sets the output volume of the delay send effect.")
+	
+	
+	
+	if ($CREATE_AUTOMATION_ID = 1)
+		$count := 16
+		set_control_par(get_ui_id($cutoff_filter),$CONTROL_PAR_AUTOMATION_ID,0)
+		set_control_par(get_ui_id($resonance_filter),$CONTROL_PAR_AUTOMATION_ID,1)
+		set_control_par(get_ui_id($vel_filter),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($env_filter),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($sound_filter),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($onoffa_mix),$CONTROL_PAR_AUTOMATION_ID,10)
+		set_control_par(get_ui_id($onoffb_mix),$CONTROL_PAR_AUTOMATION_ID,11)
+		set_control_par(get_ui_id($vola_mix),$CONTROL_PAR_AUTOMATION_ID,2)
+		set_control_par(get_ui_id($volb_mix),$CONTROL_PAR_AUTOMATION_ID,3)
+		set_control_par(get_ui_id($spread_mix),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($solo_voicing),$CONTROL_PAR_AUTOMATION_ID,8)
+		set_control_par(get_ui_id($glide_voicing),$CONTROL_PAR_AUTOMATION_ID,14)
+		set_control_par(get_ui_id($chord_onoff_voicing),$CONTROL_PAR_AUTOMATION_ID,15)
+		set_control_par(get_ui_id($legato_voicing),$CONTROL_PAR_AUTOMATION_ID,9)
+		set_control_par(get_ui_id($glidetime_voicing),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($chord_voicing),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($vol_a_adsr),$CONTROL_PAR_AUTOMATION_ID,6)
+		set_control_par(get_ui_id($vol_d_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($vol_s_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($vol_r_adsr),$CONTROL_PAR_AUTOMATION_ID,7)
+		set_control_par(get_ui_id($flt_a_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($flt_d_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($flt_s_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($flt_r_adsr),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($rev_onoff_synthfx),$CONTROL_PAR_AUTOMATION_ID,12)
+		set_control_par(get_ui_id($chorus_onoff_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($delay_onoff_synthfx),$CONTROL_PAR_AUTOMATION_ID,13)
+		set_control_par(get_ui_id($rev_amount_synthfx),$CONTROL_PAR_AUTOMATION_ID,4)
+		set_control_par(get_ui_id($chorus_depth_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($chorus_speed_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($chorus_amount_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($delay_feedback_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($delay_time_synthfx),$CONTROL_PAR_AUTOMATION_ID,$count)
+			inc($count)
+		set_control_par(get_ui_id($delay_amount_synthfx),$CONTROL_PAR_AUTOMATION_ID,5)
+	end if
+	
+end on
+
+
+{*** CONTROL GROUP "FILTER" UI_CONTROL CALLBACKS}
+on ui_control ($hp_filter)
+	$hp_filter := 1
+	$lp_filter := 0
+	$active_filter_slot := $hp_slot
+	$active_vel_to_cut_idx := $vel_flt2_idx
+	@active_env_to_flt_name := "HP_ENV_AMT"
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 1, $grp1_idx, $lp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 1, $grp2_idx, $lp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 0, $grp1_idx, $hp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 0, $grp2_idx, $hp_slot, -1)
+	
+	$cutoff_filter := _get_engine_par($ENGINE_PAR_CUTOFF, $grp1_idx, $active_filter_slot, -1)
+	$resonance_filter := _get_engine_par($ENGINE_PAR_RESONANCE, $grp1_idx, $active_filter_slot, -1)
+	$vel_filter := _get_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $active_vel_to_cut_idx, -1)
+
+	if (_get_engine_par ($MOD_TARGET_INVERT_SOURCE, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name)) = 0)
+		$env_filter := _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name))
+	else
+		$env_filter := - _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name))
+	end if
+end on
+
+on ui_control ($lp_filter)
+	$lp_filter := 1
+	$hp_filter := 0
+	$active_filter_slot := $lp_slot
+	$active_vel_to_cut_idx := $vel_flt1_idx
+	@active_env_to_flt_name := "LP_ENV_AMT"
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 0, $grp1_idx, $lp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 0, $grp2_idx, $lp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 1, $grp1_idx, $hp_slot, -1)
+	_set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, 1, $grp2_idx, $hp_slot, -1)
+	
+	$cutoff_filter := _get_engine_par($ENGINE_PAR_CUTOFF, $grp1_idx, $active_filter_slot, -1)
+	$resonance_filter := _get_engine_par($ENGINE_PAR_RESONANCE, $grp1_idx, $active_filter_slot, -1)
+	$vel_filter := _get_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $active_vel_to_cut_idx, -1)
+
+	if (_get_engine_par ($MOD_TARGET_INVERT_SOURCE, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name)) = 0)
+		$env_filter := _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name))
+	else
+		$env_filter := - _get_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+												find_target(0, $flt_env_idx, @active_env_to_flt_name))
+	end if
+end on
+
+on ui_control ($cutoff_filter)
+	_set_engine_par ($ENGINE_PAR_CUTOFF, $cutoff_filter, $grp1_idx, $active_filter_slot, -1)
+	_set_engine_par ($ENGINE_PAR_CUTOFF, $cutoff_filter, $grp2_idx, $active_filter_slot, -1)
+		set_control_par_str(get_ui_id($cutoff_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CUTOFF, $grp1_idx, $active_filter_slot, -1) & " Hz")
+end on
+
+on ui_control ($resonance_filter)
+	_set_engine_par ($ENGINE_PAR_RESONANCE, $resonance_filter, $grp1_idx, $active_filter_slot, -1)
+	_set_engine_par ($ENGINE_PAR_RESONANCE, $resonance_filter, $grp2_idx, $active_filter_slot, -1)
+	set_control_par_str(get_ui_id($resonance_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RESONANCE, $grp1_idx, $active_filter_slot, -1) & " %")
+end on
+
+on ui_control ($vel_filter)
+	_set_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $vel_filter, $grp1_idx, $active_vel_to_cut_idx, -1)
+	_set_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, $vel_filter, $grp2_idx, $active_vel_to_cut_idx, -1)
+	set_control_par_str(get_ui_id($vel_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $active_vel_to_cut_idx, -1) & " %")
+end on
+
+on ui_control ($env_filter)
+	$count := 0	
+	while ($count < $NUM_GROUPS)
+		if ($env_filter < 0)
+			_set_engine_par ($MOD_TARGET_INVERT_SOURCE, 1, $count, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name))
+			set_control_par_str(get_ui_id($env_filter),$CONTROL_PAR_LABEL,"-" & get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name)) & " %")
+		else
+			_set_engine_par ($MOD_TARGET_INVERT_SOURCE, 0, $count, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name))
+			set_control_par_str(get_ui_id($env_filter),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY, $grp1_idx, $flt_env_idx,...
+			find_target(0, $flt_env_idx, @active_env_to_flt_name)) & " %")
+		end if	
+		_set_engine_par ($ENGINE_PAR_MOD_TARGET_INTENSITY, abs($env_filter), $count, $flt_env_idx,...
+		find_target(0, $flt_env_idx, @active_env_to_flt_name))
+		inc($count)
+	end while
+	
+end on
+
+on ui_control ($sound_filter)
+	$index_1_filter := $sound_filter/10
+	$index_2_filter := $sound_filter/10 +1
+	$knob_eq_filter := $sound_filter*10
+	if ($index_2_filter > 10)
+		$index_2_filter := 10
+	end if
+	set_control_par_str(get_ui_id($sound_filter),$CONTROL_PAR_LABEL,$sound_filter & " %")
+	$a_eq_filter := 0
+	while($a_eq_filter < 9)
+		$helper_eq_filter := ((%savearr_filter[($index_2_filter*9) + $a_eq_filter] - %savearr_filter[($index_1_filter*9)...
+		 + $a_eq_filter]) * ($knob_eq_filter mod 100))/100 + %savearr_filter[($index_1_filter*9) + $a_eq_filter]
+		_set_engine_par(%engine_par_filter[$a_eq_filter],$helper_eq_filter,-1,$eq_slot,1)
+		inc($a_eq_filter)
+	end while   
+end on
+{*** END CONTROL GROUP "FILTER" UI_CONTROL CALLBACKS}
+
+{*** CONTROL GROUP "MIX" UI_CONTROL & NOTE CALLBACKS}
+on ui_control ($vola_mix)
+	_set_engine_par($ENGINE_PAR_VOLUME, $vola_mix, $grp1_idx, -1, -1)
+	set_control_par_str(get_ui_id($vola_mix),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_VOLUME, $grp1_idx, -1, -1) & " dB")
+end on
+
+on ui_control ($volb_mix)
+	_set_engine_par($ENGINE_PAR_VOLUME, $volb_mix, $grp2_idx, -1, -1)
+	set_control_par_str(get_ui_id($volb_mix),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_VOLUME, $grp2_idx, -1, -1) & " dB")
+end on
+
+on ui_control ($spread_mix)
+	if ($spread_mix < 500000)
+		_set_engine_par($ENGINE_PAR_PAN, (500000 + $spread_mix), $grp1_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_PAN, (500000 - $spread_mix), $grp2_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_TUNE, 500000, $grp1_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_TUNE, 500000, $grp2_idx, -1, -1)
+	else
+		_set_engine_par($ENGINE_PAR_PAN, 1000000, $grp1_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_PAN, 0, $grp2_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_TUNE, (500000 + (($spread_mix - 500000)/300)), $grp1_idx, -1, -1)
+		_set_engine_par($ENGINE_PAR_TUNE, (500000 - (($spread_mix - 500000)/300)), $grp2_idx, -1, -1)
+	end if
+	set_control_par_str(get_ui_id($spread_mix),$CONTROL_PAR_LABEL,$spread_mix/10000 & " %")
+end on
+
+on note
+	if ($onoffa_mix = 1)
+		allow_group ($grp1_idx)
+	else
+		disallow_group ($grp1_idx)
+	end if
+	
+	if ($onoffb_mix = 1)
+		allow_group ($grp2_idx)
+	else
+		disallow_group ($grp2_idx)
+	end if
+
+	$new_note := $EVENT_NOTE
+	$count := 0
+
+	if ($chord_onoff_voicing = 1)
+	while($count < 4)
+		if (%chord_types[($chord_voicing*4)+$count] > 0)
+			$new_note := $EVENT_NOTE + %chord_types[($chord_voicing*4)+$count]
+			if($new_note < 128)
+				$id := play_note($new_note,$EVENT_VELOCITY,0,-1)
+				change_vol($id,get_event_par($EVENT_ID,$EVENT_PAR_VOLUME),1)
+				change_tune($id,get_event_par($EVENT_ID,$EVENT_PAR_TUNE),1)
+				change_pan($id,get_event_par($EVENT_ID,$EVENT_PAR_PAN),1)
+			end if
+		end if
+		inc($count)
+	end while
+	end if
+end on
+{*** END CONTROL GROUP "MIX" UI_CONTROL & NOTE CALLBACKS}
+
+{*** CONTROL GROUP "VOICING" UI_CONTROL CALLBACKS}
+on ui_control ($solo_voicing)
+	if ($solo_voicing = 1)
+		if ($legato_voicing = 1)
+			_pgs_set_key_val(SOLO_MODE,0,2)
+		else
+			_pgs_set_key_val(SOLO_MODE,0,1)
+		end if
+	else
+		_pgs_set_key_val(SOLO_MODE,0,0)
+	end if
+	_pgs_set_key_val(DET_TIME, 0, $solo_voicing)
+end on
+
+on ui_control ($legato_voicing)
+	if ($legato_voicing = 1)
+		if ($solo_voicing = 1)
+			_pgs_set_key_val(SOLO_MODE,0,2)
+		end if
+	else
+		if ($solo_voicing = 1)
+			_pgs_set_key_val(SOLO_MODE,0,1)
+		end if
+	end if
+end on
+
+on ui_control ($glide_voicing)
+	if ($glide_voicing = 1)
+		_pgs_set_key_val(GLIDE_ON_OFF,0,2)
+	else
+		_pgs_set_key_val(GLIDE_ON_OFF,0,0)
+	
+	end if
+end on
+
+on ui_control ($glidetime_voicing)
+	_pgs_set_key_val(GLIDE_TIME,0,$glidetime_voicing)
+	set_control_par_str(get_ui_id($glidetime_voicing),$CONTROL_PAR_LABEL,$glidetime_voicing)
+end on
+
+on ui_control ($chord_voicing)
+	
+	set_text ($lb_chord_voicing,!chord_names[$chord_voicing])
+	set_control_par_str(get_ui_id($chord_voicing),$CONTROL_PAR_LABEL,!chord_names[$chord_voicing])
+	
+	$last_time := $ENGINE_UPTIME
+	wait($wait_time * 1000)
+	if($ENGINE_UPTIME - $last_time > $wait_time -5)
+		set_text ($lb_chord_voicing,"PRESET")
+	end if
+end on
+
+{*** END CONTROL GROUP "VOICING" UI_CONTROL CALLBACKS}
+
+{*** CONTROL GROUP "ADSR" UI_CONTROL CALLBACKS}
+on ui_control ($vol_flt_adsr)
+	if ($vol_flt_adsr = 0)
+		$count := 8
+		while ($count < 12)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%adsr_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+			inc($count)
+		end while
+	else
+		$count := 8
+		while ($count < 12)
+			set_control_par(%adsr_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+			set_control_par(%adsr_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			inc($count)
+		end while
+	end if		
+end on
+
+on ui_control ($vol_a_adsr)
+	_set_engine_par ($ENGINE_PAR_ATTACK, $vol_a_adsr, $grp1_idx, $vol_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_ATTACK, $vol_a_adsr, $grp2_idx, $vol_env_idx, -1)
+	set_control_par_str(get_ui_id($vol_a_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_ATTACK, $grp1_idx, $vol_env_idx, -1) & " ms")
+end on
+
+on ui_control ($vol_d_adsr)
+	_set_engine_par ($ENGINE_PAR_DECAY, $vol_d_adsr, $grp1_idx, $vol_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_DECAY, $vol_d_adsr, $grp2_idx, $vol_env_idx, -1)
+	set_control_par_str(get_ui_id($vol_d_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DECAY, $grp1_idx, $vol_env_idx, -1) & " ms")
+end on
+
+on ui_control ($vol_s_adsr)
+	_set_engine_par ($ENGINE_PAR_SUSTAIN, $vol_s_adsr, $grp1_idx, $vol_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_SUSTAIN, $vol_s_adsr, $grp2_idx, $vol_env_idx, -1)
+	set_control_par_str(get_ui_id($vol_s_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SUSTAIN, $grp1_idx, $vol_env_idx, -1) & " dB")
+end on
+
+on ui_control ($vol_r_adsr)
+	_set_engine_par ($ENGINE_PAR_RELEASE, $vol_r_adsr, $grp1_idx, $vol_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_RELEASE, $vol_r_adsr, $grp2_idx, $vol_env_idx, -1)
+	set_control_par_str(get_ui_id($vol_r_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RELEASE, $grp1_idx, $vol_env_idx, -1) & " ms")
+end on
+
+on ui_control ($flt_a_adsr)
+	_set_engine_par ($ENGINE_PAR_ATTACK, $flt_a_adsr, $grp1_idx, $flt_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_ATTACK, $flt_a_adsr, $grp2_idx, $flt_env_idx, -1)
+	set_control_par_str(get_ui_id($flt_a_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_ATTACK, $grp1_idx, $flt_env_idx, -1) & " ms")
+end on
+
+on ui_control ($flt_d_adsr)
+	_set_engine_par ($ENGINE_PAR_DECAY, $flt_d_adsr, $grp1_idx, $flt_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_DECAY, $flt_d_adsr, $grp2_idx, $flt_env_idx, -1)
+	set_control_par_str(get_ui_id($flt_d_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DECAY, $grp1_idx, $flt_env_idx, -1) & " ms")
+end on
+
+on ui_control ($flt_s_adsr)
+	_set_engine_par ($ENGINE_PAR_SUSTAIN, $flt_s_adsr, $grp1_idx, $flt_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_SUSTAIN, $flt_s_adsr, $grp2_idx, $flt_env_idx, -1)
+	set_control_par_str(get_ui_id($flt_s_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SUSTAIN, $grp1_idx, $flt_env_idx, -1) & " dB")
+end on
+
+on ui_control ($flt_r_adsr)
+	_set_engine_par ($ENGINE_PAR_RELEASE, $flt_r_adsr, $grp1_idx, $flt_env_idx, -1)
+	_set_engine_par ($ENGINE_PAR_RELEASE, $flt_r_adsr, $grp2_idx, $flt_env_idx, -1)
+	set_control_par_str(get_ui_id($flt_r_adsr),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_RELEASE, $grp1_idx, $flt_env_idx, -1) & " ms")
+end on
+{*** END CONTROL GROUP "ADSR" UI_CONTROL CALLBACKS}
+
+{*** CONTROL GROUP "SYNTHFX" UI_CONTROL CALLBACKS}
+on ui_control ($rev_synthfx)
+	if ($rev_synthfx = 0)
+		$rev_synthfx := 1
+	else
+		$chorus_synthfx := 0
+		$delay_synthfx := 0
+		set_control_par(%synthfx_id[44], $CONTROL_PAR_PICTURE_STATE, 1)
+		set_control_par(%synthfx_id[45], $CONTROL_PAR_PICTURE_STATE, 0)
+		set_control_par(%synthfx_id[46], $CONTROL_PAR_PICTURE_STATE, 0)
+		$count := 5
+		while ($count < 9)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%synthfx_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%synthfx_id[$count+8], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			inc($count)
+		end while
+		set_control_par(%synthfx_id[8], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[17], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[30], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[18], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[19], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[20], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[21], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[22], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[23], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[33], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[34], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+
+		$count := 0
+		while ($count < 9)
+			if ($count = $category_reverb)
+				set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_PART_NOTHING)
+			else
+				set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_WHOLE_CONTROL)
+			end if
+			inc ($count)
+		end while
+	end if		
+end on
+
+on ui_control ($chorus_synthfx)
+	if ($chorus_synthfx = 0)
+		$chorus_synthfx := 1
+	else
+		$rev_synthfx := 0
+		$delay_synthfx := 0
+		set_control_par(%synthfx_id[44], $CONTROL_PAR_PICTURE_STATE, 0)
+		set_control_par(%synthfx_id[45], $CONTROL_PAR_PICTURE_STATE, 1)
+		set_control_par(%synthfx_id[46], $CONTROL_PAR_PICTURE_STATE, 0)
+		$count := 5
+		while ($count < 9)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%synthfx_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%synthfx_id[$count+8], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			inc($count)
+		end while
+		set_control_par(%synthfx_id[17], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[30], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[18], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[19], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[20], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[21], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[22], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[23], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[33], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[34], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+
+		$count := 0
+		while ($count < 9)
+			set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_WHOLE_CONTROL)
+			inc ($count)
+		end while
+	end if	  
+end on
+
+on ui_control ($delay_synthfx)
+	if ($delay_synthfx = 0)
+		$delay_synthfx := 1
+	else
+		$rev_synthfx := 0
+		$chorus_synthfx := 0
+		set_control_par(%synthfx_id[44], $CONTROL_PAR_PICTURE_STATE, 0)
+		set_control_par(%synthfx_id[45], $CONTROL_PAR_PICTURE_STATE, 0)
+		set_control_par(%synthfx_id[46], $CONTROL_PAR_PICTURE_STATE, 1)
+		$count := 5
+		while ($count < 9)
+			set_control_par(%synthfx_id[$count], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%synthfx_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+			set_control_par(%synthfx_id[$count+8], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			inc($count)
+		end while
+		set_control_par(%synthfx_id[17], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[30], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[18], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[19], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[20], $CONTROL_PAR_HIDE, $HIDE_WHOLE_CONTROL)
+		set_control_par(%synthfx_id[21], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[22], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[23], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[33], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+		set_control_par(%synthfx_id[34], $CONTROL_PAR_HIDE, $HIDE_PART_NOTHING)
+
+		$count := 0
+		while ($count < 9)
+			set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_WHOLE_CONTROL)
+			inc ($count)
+		end while
+	end if	  
+end on
+
+{reverb functionality}
+on ui_control ($rev_onoff_synthfx)
+	_set_engine_par($ENGINE_PAR_SEND_EFFECT_BYPASS, (($rev_onoff_synthfx + 1) mod 2), -1, $reverb_slot, 0)
+end on
+
+on ui_control ($category_reverb)
+  
+	$count := 0
+	while ($count < 9)
+		if ($count = $category_reverb)
+			set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_PART_NOTHING)
+		else
+			set_control_par(%subcat_menu_id[$count],$CONTROL_PAR_HIDE,$HIDE_WHOLE_CONTROL)
+		end if
+		inc ($count)
+	end while
+	
+	set_control_par(get_ui_id($image_reverb),$CONTROL_PAR_PICTURE_STATE,$category_reverb)
+	
+	_load_ir_sample(... 
+	!ir_path[%offset_reverb[$category_reverb]+get_control_par...
+	(%subcat_menu_id[$category_reverb],$CONTROL_PAR_VALUE)],$reverb_slot,0) 
+	{change 0 to 1 if reverb is on insert effect}
+  
+end on
+
+on ui_control ($hall_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$hall_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($cathedral_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$cathedral_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($club_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$club_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($room_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$room_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($l300_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$l300_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($quadstick_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$quadstick_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($brt7_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$brt7_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($plate_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$plate_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($cabinet_reverb)
+  
+	_load_ir_sample(... 
+	!ir_path[$cabinet_reverb],$reverb_slot,0)
+  
+end on
+
+on ui_control ($rev_amount_synthfx)
+	set_engine_par ($ENGINE_PAR_SENDLEVEL_0, $rev_amount_synthfx, -1, 7, 1)
+	set_control_par_str(get_ui_id($rev_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SENDLEVEL_0, -1, 7, 1) & " dB")
+end on
+
+{chorus functionality}
+on ui_control ($chorus_onoff_synthfx)
+	set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, (($chorus_onoff_synthfx + 1) mod 2), -1, $chorus_slot, 1)
+end on
+
+on ui_control ($chorus_depth_synthfx)
+	set_engine_par ($ENGINE_PAR_CH_DEPTH, $chorus_depth_synthfx, -1, $chorus_slot, 1)
+	set_control_par_str(get_ui_id($chorus_depth_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CH_DEPTH, -1, $chorus_slot, 1) & " %")
+end on
+
+on ui_control ($chorus_speed_synthfx)
+	set_engine_par ($ENGINE_PAR_CH_SPEED, $chorus_speed_synthfx, -1, $chorus_slot, 1)
+	set_control_par_str(get_ui_id($chorus_speed_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_CH_SPEED, -1, $chorus_slot, 1) & " Hz")
+end on
+
+on ui_control ($chorus_amount_synthfx)
+	set_engine_par ($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, $chorus_amount_synthfx, -1, $chorus_slot, 1)
+	set_control_par_str(get_ui_id($chorus_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $chorus_slot, 1) & " dB")
+end on
+
+{delay functionality}
+on ui_control ($delay_onoff_synthfx)
+	set_engine_par ($ENGINE_PAR_EFFECT_BYPASS, (($delay_onoff_synthfx + 1) mod 2), -1, $delay_slot, 1)
+end on
+
+on ui_control ($delay_feedback_synthfx)
+	set_engine_par ($ENGINE_PAR_DL_FEEDBACK, $delay_feedback_synthfx, -1, $delay_slot, 1)
+	set_control_par_str(get_ui_id($delay_feedback_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DL_FEEDBACK, -1, $delay_slot, 1) & " %")
+end on
+
+on ui_control ($delay_time_synthfx)
+	set_engine_par ($ENGINE_PAR_DL_TIME, $delay_time_synthfx, -1, $delay_slot, 1)
+	set_control_par_str(get_ui_id($delay_time_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_DL_TIME, -1, $delay_slot, 1) & " ms")
+end on
+
+on ui_control ($delay_amount_synthfx)
+	set_engine_par ($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, $delay_amount_synthfx, -1, $delay_slot, 1)
+	set_control_par_str(get_ui_id($delay_amount_synthfx),$CONTROL_PAR_LABEL,get_engine_par_disp($ENGINE_PAR_SEND_EFFECT_OUTPUT_GAIN, -1, $delay_slot, 1) & " dB")
+end on
+
+{*** END CONTROL GROUP "SYNTHFX" UI_CONTROL CALLBACKS}
+

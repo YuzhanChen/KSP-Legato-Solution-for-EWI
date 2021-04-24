@@ -1,0 +1,103 @@
+{***********************************************
+Humanize
+Author: Native Instruments
+Written by: Nicki Marinic, Josef Natterer
+Modified: July 30, 2009
+*************************************************}
+
+on init
+	message("")
+	set_script_title("Humanizer")
+	
+	declare ui_knob $Timing (0,100,1)
+	set_knob_unit ($Timing, $KNOB_UNIT_PERCENT)
+	set_text ($Timing,"Note On")
+	$Timing := 0
+	make_persistent ($Timing)
+	set_control_help ($Timing,"Note On: adds random delay (0 ms - 100 ms) to the Note On of each note.")
+	move_control ($Timing,1,2)
+	
+	declare ui_knob $NoDly (0,100,1)
+	set_text($NoDly,"Note Off")
+	set_knob_defval ($NoDly,0)
+  	set_knob_unit ($NoDly, $KNOB_UNIT_PERCENT)
+  	$NoDly := 0
+	make_persistent ($NoDly)
+	set_control_help( $NoDly,"Note Off: adds random delay (0 ms - 100 ms) to the Note Off of each note.")
+	move_control ($NoDly,2,2)
+	
+	declare ui_knob $Velocity (0,100,1)
+	set_knob_unit ($Velocity, $KNOB_UNIT_PERCENT)
+	$Velocity := 0
+	make_persistent ($Velocity)
+	set_control_help ($Velocity,"Velocity:  adds or subtracts random velocity (-64 - 64).")
+	move_control ($Velocity,3,2)
+	
+	declare ui_knob $Tuning (0,100,1)
+	set_knob_unit ($Tuning, $KNOB_UNIT_PERCENT)
+	$Tuning := 0
+	make_persistent ($Tuning)
+	set_control_help ($Tuning,"Tuning: detunes each note randomly in the range from -1 semitone to +1 semitone.")
+	move_control ($Tuning,4,2)
+	
+	declare ui_knob $Volume (0,100,1)
+	set_knob_unit ($Volume, $KNOB_UNIT_PERCENT)
+	$Volume := 0
+	make_persistent ($Volume)
+	set_control_help ($Volume,"Volume: changes the volume of each note randomly from -6db to +6 db")
+	move_control ($Volume,5,2)
+	
+	declare ui_knob $Pan (0,100,1)
+	set_knob_unit ($Pan, $KNOB_UNIT_PERCENT)
+	$Pan := 0
+	make_persistent ($Pan)
+	set_control_help ($Pan,"Pan: randomly changes the panning of each note.")
+	move_control ($Pan,6,2)
+	
+	declare $wait_helper
+
+	declare $new_time
+	declare $new_vel
+	declare $new_event
+
+end on
+
+on note
+	$new_vel := $EVENT_VELOCITY + (random (-127,127) * $Velocity / 200)
+	if (in_range ($new_vel,0,127))
+		$new_vel := $new_vel
+	else
+		if ($new_vel > 127)
+			$new_vel := 127
+		end if
+		if ($new_vel < 1)
+			$new_vel := 1
+		end if
+	end if
+
+	if ($Timing > 0)
+		ignore_event ($EVENT_ID)
+		$new_time := random (0,$Timing * 1000)
+		wait($new_time+1)
+		$new_event := play_note ($EVENT_NOTE,$new_vel,0,-1)
+		change_tune ($new_event,(random (-1000,1000) * $Tuning) + get_event_par($EVENT_ID,$EVENT_PAR_TUNE), 1)
+		change_vol ($new_event, (random (-60,60) * $Volume) + get_event_par($EVENT_ID,$EVENT_PAR_VOLUME), 1)
+		change_pan ($new_event, (random(-$Pan*15,$Pan*15)) + get_event_par($EVENT_ID,$EVENT_PAR_PAN), 1)
+	else
+		change_velo($EVENT_ID,$new_vel)
+		change_tune($EVENT_ID,random (-1000,1000) * $Tuning, 1)
+		change_vol ($EVENT_ID, random (-60,60) * $Volume, 1)
+		change_pan ($EVENT_ID, random(-$Pan*15,$Pan*15), 1)
+	end if
+	
+end on
+
+on release
+	
+	if ($NoDly > 0)
+		ignore_event($EVENT_ID)
+		$wait_helper := random(0,$NoDly*1000)
+		wait($wait_helper+1)
+		note_off($EVENT_ID)
+	end if
+end on

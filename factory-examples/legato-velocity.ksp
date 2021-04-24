@@ -1,0 +1,85 @@
+{***********************************************
+Legato Velocity Compressor
+Author: Native Instruments
+Written by: Nicki Marinic, Josef Natterer
+Modified: August 1, 2009
+*************************************************}
+
+on init
+	message("")
+	set_script_title("Legato Velocity")
+	
+	declare ui_label $label (2,1)
+	set_text ($label,"Velocity Compression of Legato Notes:")
+
+	
+	declare ui_knob $Comp_Amount (0,100,1)
+	set_text ($Comp_Amount,"Amount")
+	set_knob_defval ($Comp_Amount, 50)
+	$Comp_Amount := 50
+  	set_knob_unit ($Comp_Amount, $KNOB_UNIT_PERCENT)
+	set_knob_label ($Comp_Amount, $Comp_Amount)
+	make_persistent ($Comp_Amount)
+	set_control_help ($Comp_Amount,"Compression Amount: Controls the velocity compression of legato played notes in relation to the first (i.e. non legato) played note. When set to <Off>, the played velocities will not be changed. When set to <Fix Vel>, all legato played notes will have the velocity of the first note.")
+	
+	
+	move_control ($label,2,2)
+	move_control ($Comp_Amount,4,2)
+
+	_read_persistent_var($Comp_Amount)
+	select ($Comp_Amount)
+		case 0
+			set_knob_label ($Comp_Amount,"Off")
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_NONE)
+		case 1 to 99
+			set_knob_label ($Comp_Amount,$Comp_Amount)
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_PERCENT)
+		case 100
+			set_knob_label ($Comp_Amount,"Fix Vel")
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_NONE)
+	end select
+	declare %pressed_id[128]
+	declare $note_nr
+	declare $orig_velo
+	declare $new_velo
+	declare $a_leg_vel
+	
+end on
+
+on note
+
+	%pressed_id[$EVENT_NOTE] := $EVENT_ID
+	$a_leg_vel := 0
+	$note_nr := 0
+	while($a_leg_vel < 128)
+		if(%pressed_id[$a_leg_vel] > 0)
+			inc($note_nr)
+		end if
+		inc($a_leg_vel)
+	end while
+	if($note_nr < 2)
+		$orig_velo := $EVENT_VELOCITY
+	else
+		$new_velo := (((100-$comp_amount) * ($EVENT_VELOCITY-$orig_velo))/100) + $orig_velo
+		change_velo($EVENT_ID,$new_velo)
+	end if
+	
+end on
+
+on release
+	%pressed_id[$EVENT_NOTE] := 0
+end on
+
+on ui_control ($Comp_Amount)
+	select ($Comp_Amount)
+		case 0
+			set_knob_label ($Comp_Amount,"Off")
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_NONE)
+		case 1 to 99
+			set_knob_label ($Comp_Amount,$Comp_Amount)
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_PERCENT)
+		case 100
+			set_knob_label ($Comp_Amount,"Fix Vel")
+			set_knob_unit ($Comp_Amount, $KNOB_UNIT_NONE)
+	end select
+end on

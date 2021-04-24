@@ -1,0 +1,1201 @@
+{***********************************************
+Kontakt 4 Factory Library - Options
+Synth Collection
+Author: Native Instruments
+Written by: Nikolas Jeroma, Dinos Vallianatos
+Modified: August 7th, 2009
+*************************************************}
+on init
+	set_control_par_str($INST_ICON_ID,$CONTROL_PAR_PICTURE,"pv_synth_logo")
+	set_control_par_str($INST_WALLPAPER_ID,$CONTROL_PAR_PICTURE,"pv_synth_wallpaper")
+	make_perfview
+	set_script_title("Options")
+	_set_skin_offset(389)
+	set_ui_height_px(296)
+	
+	message("")
+	declare $count
+
+	declare $last_time_1
+	declare $last_time_2
+	declare $wait_time := 800	 {Enter control label wait time}
+	
+	declare const $ROOT_X := 66
+	declare const $ROOT_Y := 2
+	declare const $GRID_X := 92
+	declare const $GRID_Y := 21
+
+	declare const $FONT_ID := 2  {the font id for all visible labels}
+	
+	{*** CONTROL GROUP "KEYRANGE"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_keyrange := 1 {X Position of Control Group in grid}
+		declare $y_grid_keyrange := 3 {Y Position of Control Group in grid}
+		declare $x_px_keyrange := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_keyrange := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_KEYRANGE := 3 {number of controls in this control group}
+	
+		declare ui_value_edit $min_keyrange (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+		declare ui_value_edit $max_keyrange (0,127,$VALUE_EDIT_MODE_NOTE_NAMES)
+		declare ui_switch $learn_keyrange
+		
+		declare %keyrange_id[$NUM_KEYRANGE]
+		%keyrange_id[0] := get_ui_id($min_keyrange)
+		%keyrange_id[1] := get_ui_id($max_keyrange)
+		%keyrange_id[2] := get_ui_id($learn_keyrange)
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($min_keyrange, ($GRID_X * 1) - 35, ($GRID_Y * 2) - 6)
+		move_control_px($max_keyrange, ($GRID_X * 1) + 20, ($GRID_Y * 2) - 6)
+		move_control_px($learn_keyrange, ($GRID_X * 1) - 29, ($GRID_Y * 2) + 16)
+		
+		{VARIOUS ATTRIBUTES}
+		
+		set_control_par (get_ui_id($min_keyrange),$CONTROL_PAR_WIDTH,46)
+		set_text($min_keyrange,"")
+		$min_keyrange := 0
+		make_persistent ($min_keyrange)
+		set_control_par_str(get_ui_id($min_keyrange), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($min_keyrange), $CONTROL_PAR_SHOW_ARROWS, 0)
+		set_control_help($min_keyrange,"Min: Sets the lower limit of the keyrange. MIDI notes below this note will not be played.")
+		
+		set_control_par (get_ui_id($max_keyrange),$CONTROL_PAR_WIDTH,46)
+		set_text($max_keyrange,"")
+		$max_keyrange := 127
+		make_persistent ($max_keyrange)
+		set_control_par_str(get_ui_id($max_keyrange), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($max_keyrange), $CONTROL_PAR_SHOW_ARROWS, 0)
+		set_control_help($max_keyrange,"Max: Sets the higher limit of the keyrange. MIDI notes above this note will not be played.")
+		
+		set_text($learn_keyrange,"")
+		set_control_par_str(get_ui_id($learn_keyrange), $CONTROL_PAR_PICTURE, "pv_synth_button_big")
+		set_control_par(get_ui_id($learn_keyrange), $CONTROL_PAR_HEIGHT, 32)
+		set_control_par(get_ui_id($learn_keyrange), $CONTROL_PAR_WIDTH, 32)
+		set_control_par_str(get_ui_id($learn_keyrange), $CONTROL_PAR_AUTOMATION_NAME, "Learn (Key Range)")
+		set_control_par_str(get_ui_id($learn_keyrange), $CONTROL_PAR_LABEL, "Off")
+		set_control_help ($learn_keyrange,"Learn: Click to enable MIDI Learn for the keyrange. The keyrange is set by the next two received MIDI notes. Clicking the button twice without playing any notes resets the keyrange.")
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_KEYRANGE)
+			set_control_par (%keyrange_id[$count],$CONTROL_PAR_POS_X,get_control_par(%keyrange_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_keyrange - 2)*$GRID_X + $x_px_keyrange)
+			
+			set_control_par (%keyrange_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%keyrange_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_keyrange - 2)*$GRID_Y + $y_px_keyrange) 
+			
+			inc($count)
+		end while
+		
+		declare $learn_counter
+		declare $a_keyrange
+	
+	{*** END CONTROL GROUP "KEYRANGE"}
+	
+	
+	{*** CONTROL GROUP "VELOCITY"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_velocity := 2 {X Position of Control Group in grid}
+		declare $y_grid_velocity := 3 {Y Position of Control Group in grid}
+		declare $x_px_velocity := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_velocity := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_VELOCITY := 9 {number of controls in this control group}
+	
+		declare ui_slider $vel_vol_velocity (0,1000000)
+		declare ui_value_edit $min_velocity (1,127,1)
+		declare ui_value_edit $max_velocity (1,127,1)
+		declare ui_button $linear_velocity
+		declare ui_button $exp_1_velocity
+		declare ui_button $exp_2_velocity
+		declare ui_button $fix_velocity
+		declare ui_label $lb_min_velocity (1,1)
+		declare ui_label $lb_max_velocity (1,1)
+		
+		declare %velocity_id[$NUM_VELOCITY]
+		%velocity_id[0] := get_ui_id($vel_vol_velocity)
+		%velocity_id[1] := get_ui_id($min_velocity)
+		%velocity_id[2] := get_ui_id($max_velocity)
+		%velocity_id[3] := get_ui_id($linear_velocity)
+		%velocity_id[4] := get_ui_id($exp_1_velocity)
+		%velocity_id[5] := get_ui_id($exp_2_velocity)
+		%velocity_id[6] := get_ui_id($fix_velocity)
+		%velocity_id[7] := get_ui_id($lb_min_velocity)
+		%velocity_id[8] := get_ui_id($lb_max_velocity)
+		
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($vel_vol_velocity, ($GRID_X * 2) + 67, ($GRID_Y * 1) + 18)
+		
+		move_control_px($min_velocity,	 ($GRID_X * 3) + 25, ($GRID_Y * 2) + 5)
+		move_control_px($max_velocity,	 ($GRID_X * 3) + 78, ($GRID_Y * 2) + 5)
+		
+		move_control_px($linear_velocity,  ($GRID_X * 1) + 18, ($GRID_Y * 2) + 2)
+		move_control_px($exp_1_velocity,   ($GRID_X * 1) + 48, ($GRID_Y * 2) + 2)
+		move_control_px($exp_2_velocity,   ($GRID_X * 1) + 78, ($GRID_Y * 2) + 2)
+		move_control_px($fix_velocity,	 ($GRID_X * 2) + 16, ($GRID_Y * 2) + 2)
+
+		move_control_px($lb_min_velocity,	 ($GRID_X * 3) + 2, ($GRID_Y * 3) + 7)
+		move_control_px($lb_max_velocity,	 ($GRID_X * 3) + 55, ($GRID_Y * 3) + 7)
+		
+		
+		{VARIOUS ATTRIBUTES}
+
+		set_control_par(%velocity_id[0], $CONTROL_PAR_DEFAULT_VALUE, 500000)
+
+		set_text($lb_min_velocity, "MIN")
+		set_control_par(get_ui_id($lb_min_velocity), $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+		set_control_par(get_ui_id($lb_min_velocity), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+		set_control_par(get_ui_id($lb_min_velocity), $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+
+		set_text($lb_max_velocity, "MAX")
+		set_control_par(get_ui_id($lb_max_velocity), $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+		set_control_par(get_ui_id($lb_max_velocity), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+		set_control_par(get_ui_id($lb_max_velocity), $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+		
+  		$vel_vol_velocity := _get_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY,0,find_mod(0,"VEL_VOLUME"),-1)
+		set_control_par_str(get_ui_id($vel_vol_velocity), $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+		set_control_par(get_ui_id($vel_vol_velocity), $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+		set_control_par_str(%velocity_id[0], $CONTROL_PAR_AUTOMATION_NAME, "Velo")
+		set_control_par_str(%velocity_id[0], $CONTROL_PAR_LABEL,...
+		get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY,0,find_mod(0,"VEL_VOLUME"),-1) & " %")
+		set_control_help ($vel_vol_velocity,"Vel -> Vol: Sets the percentage of velocity to volume modulation.")
+		
+		set_control_par (get_ui_id($min_velocity),$CONTROL_PAR_WIDTH,40)
+		set_text($min_velocity,"")
+		set_control_par_str(get_ui_id($min_velocity), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($min_velocity), $CONTROL_PAR_SHOW_ARROWS, 0)
+		$min_velocity := 1
+		make_persistent ($min_velocity)
+		set_control_help($min_velocity,"Min: Sets the minimum velocity value. Played velocities below this limit will be set to that value.")
+		
+		set_control_par (get_ui_id($max_velocity),$CONTROL_PAR_WIDTH,40)
+		set_text($max_velocity,"")
+		set_control_par_str(get_ui_id($max_velocity), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($max_velocity), $CONTROL_PAR_SHOW_ARROWS, 0)
+		$max_velocity := 127
+		make_persistent ($max_velocity)
+		set_control_help($max_velocity,"Max: Sets the maximum velocity value. Played velocities above this limit will be set to that value. When the <Fixed Velocity Curve> is selected, this value determines the played velocity.")
+		
+		set_control_par_str(get_ui_id($linear_velocity), $CONTROL_PAR_PICTURE, "pv_synth_opt_vel_curve_btn_1")
+		set_control_par(get_ui_id($linear_velocity), $CONTROL_PAR_HEIGHT, 30)
+		set_control_par(get_ui_id($linear_velocity), $CONTROL_PAR_WIDTH, 30)
+		set_text($linear_velocity,"")
+		$linear_velocity := 1
+		make_persistent ($linear_velocity)
+		set_control_help ($linear_velocity,"Velocity Curve: Sets the velocity behaviour to a linear response.")
+		
+		set_control_par_str(get_ui_id($exp_1_velocity), $CONTROL_PAR_PICTURE, "pv_synth_opt_vel_curve_btn_2")
+		set_control_par(get_ui_id($exp_1_velocity), $CONTROL_PAR_HEIGHT, 30)
+		set_control_par(get_ui_id($exp_1_velocity), $CONTROL_PAR_WIDTH, 30)
+		set_text($exp_1_velocity,"")
+		$exp_1_velocity := 0
+		make_persistent ($exp_1_velocity)
+		set_control_help ($exp_1_velocity,"Exponential Velocity Curve +: Sets the velocity behaviour to a positive exponential response.")
+		
+		set_control_par_str(get_ui_id($exp_2_velocity), $CONTROL_PAR_PICTURE, "pv_synth_opt_vel_curve_btn_3")
+		set_control_par(get_ui_id($exp_2_velocity), $CONTROL_PAR_HEIGHT, 30)
+		set_control_par(get_ui_id($exp_2_velocity), $CONTROL_PAR_WIDTH, 30)
+		set_text($exp_2_velocity,"")
+		$exp_2_velocity := 0
+		make_persistent ($exp_2_velocity)
+		set_control_help ($exp_2_velocity,"Exponential Velocity Curve +: Sets the velocity behaviour to a negative exponential response.")
+		
+		set_control_par_str(get_ui_id($fix_velocity), $CONTROL_PAR_PICTURE, "pv_synth_opt_vel_curve_btn_4")
+		set_control_par(get_ui_id($fix_velocity), $CONTROL_PAR_HEIGHT, 30)
+		set_control_par(get_ui_id($fix_velocity), $CONTROL_PAR_WIDTH, 30)
+		set_text($fix_velocity,"")
+		$fix_velocity := 0
+		make_persistent ($fix_velocity)
+		set_control_help ($fix_velocity,"Fixed Velocity: Sets all played velocities to the value specified with the <Max> control.")
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_VELOCITY)
+			set_control_par (%velocity_id[$count],$CONTROL_PAR_POS_X,get_control_par(%velocity_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_velocity - 2)*$GRID_X + $x_px_velocity)
+			
+			set_control_par (%velocity_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%velocity_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_velocity - 2)*$GRID_Y + $y_px_velocity) 
+			
+			inc($count)
+		end while
+		
+		declare $mode_velocity {the button states of the four velocity curves}
+		make_persistent ($mode_velocity)
+		
+		declare const $EXP_SHAPE := 20
+		
+		{copied from original script}
+		
+		declare %table[128]
+		
+		{declare ui_table %table[128] (4,4,127)
+		set_control_help (%table,"Velocity Curve: Displays the velocity curve.")
+		move_control (%table,1,5)}
+		
+		declare $CShow
+		make_persistent ($CShow)
+	 
+		declare $curve
+		make_persistent ($curve)
+		$curve := 0
+		
+		declare const $Shape := 35
+		
+		declare $helper
+		declare %helper_2[128]
+		declare $helper_3
+		declare $helper_4
+		declare $knob_helper
+		$count := 1
+		while ($count < 128)
+			%table[$count] := $count
+			inc ($count)
+		end while
+		
+		
+		make_persistent (%table)
+		make_persistent ($curve)
+		
+		declare %shape_form[128]
+		declare %curve_form[128]
+		declare %comp_form[128]
+		$count := 0
+		while($count < 128)
+			%shape_form[$count] := $count*100
+			%curve_form[$count] := $count*100
+			%comp_form[$count] := $count	
+			inc($count)
+		end while
+		make_persistent(%curve_form)
+		make_persistent(%shape_form)
+		make_persistent(%comp_form)
+		declare %curve_table_helper[128]
+		declare %curve_deriv[128]
+		declare $kurven_hoehe
+		
+		$knob_helper := ($Shape *(-1) + 1000)
+		$count := 0
+		$helper := 1000
+		$kurven_hoehe := 0
+		while($count < 64)
+			$helper := ($helper * $knob_helper)/1000
+			%curve_deriv[$count] := $helper
+			%curve_deriv[127-$count] := $helper
+			$kurven_hoehe := $kurven_hoehe + (%curve_deriv[$count]*2)
+			inc($count)
+		end while
+		$count := 1
+		%curve_table_helper[0] := 0
+		while ($count <128)
+			%curve_table_helper[$count] := ((%curve_table_helper[$count-1]+%curve_deriv[$count]))
+			inc($count)
+		end while
+		$count := 0
+		while ($count <128)
+			%shape_form[$count] := ((%curve_table_helper[$count]*128)/(($kurven_hoehe)/100))
+			inc($count)
+		end while
+		$count := 0
+		while ($count <128)
+			%shape_form[$count] := (%shape_form[$count]*12700)/%shape_form[127]
+			inc($count)
+		end while
+		
+		declare $new_vel
+		
+		{end copy}
+	
+	{*** END CONTROL GROUP "VELOCITY"}
+	
+	{*** CONTROL GROUP "PBEND"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_pbend := 5 {X Position of Control Group in grid}
+		declare $y_grid_pbend := 3 {Y Position of Control Group in grid}
+		declare $x_px_pbend := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_pbend := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_PBEND := 4 {number of controls in this control group}
+	
+		declare ui_slider $down_pbend (-120,120)
+		declare ui_slider $up_pbend (-120,120)
+		declare ui_label $lb_down_pbend (1,1)
+		declare ui_label $lb_up_pbend (1,1)
+		
+		declare %pbend_id[$NUM_PBEND]
+		%pbend_id[0] := get_ui_id($down_pbend)
+		%pbend_id[1] := get_ui_id($up_pbend)
+		%pbend_id[2] := get_ui_id($lb_down_pbend)
+		%pbend_id[3] := get_ui_id($lb_up_pbend)
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($down_pbend, ($GRID_X * 1) + 71, ($GRID_Y * 1) + 18)
+		move_control_px($up_pbend, ($GRID_X * 2) + 34, ($GRID_Y * 1) + 18)
+		move_control_px($lb_down_pbend, ($GRID_X * 1) + 46, ($GRID_Y * 3) + 7)
+		move_control_px($lb_up_pbend, ($GRID_X * 2) + 9, ($GRID_Y * 3) + 7)
+		
+		{VARIOUS ATTRIBUTES}
+
+		set_control_par(%pbend_id[0], $CONTROL_PAR_DEFAULT_VALUE, 0)
+		set_control_par(%pbend_id[1], $CONTROL_PAR_DEFAULT_VALUE, 0)
+		
+   		$up_pbend := 0
+   		make_persistent ($up_pbend)
+		set_control_par_str(get_ui_id($up_pbend), $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+		set_control_par(get_ui_id($up_pbend), $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+   		declare $Pbend_up
+   		make_persistent ($PBend_up)
+   		set_control_help ($up_pbend,"Down: Sets the pitch bend range in semitones when the pitch bend wheel is moved up.")
+	
+   		$down_pbend := 0
+   		make_persistent ($down_pbend)
+		set_control_par_str(get_ui_id($down_pbend), $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+		set_control_par(get_ui_id($down_pbend), $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+   		declare $Pbend_down
+   		make_persistent ($PBend_down)
+   	 	set_control_help($down_pbend,"Up: Sets the pitch bend range in semitones when the pitch bend wheel is moved down.")
+
+		set_text($lb_down_pbend, "DOWN")
+		set_control_par(get_ui_id($lb_down_pbend), $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+		set_control_par(get_ui_id($lb_down_pbend), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+		set_control_par(get_ui_id($lb_down_pbend), $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+
+		set_text($lb_up_pbend, "UP")
+		set_control_par(get_ui_id($lb_up_pbend), $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+		set_control_par(get_ui_id($lb_up_pbend), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+		set_control_par(get_ui_id($lb_up_pbend), $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+		
+		set_control_par_str(%pbend_id[0], $CONTROL_PAR_AUTOMATION_NAME, "PB Down")
+		set_control_par_str(%pbend_id[1], $CONTROL_PAR_AUTOMATION_NAME, "PB Up")
+
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_PBEND)
+			set_control_par (%pbend_id[$count],$CONTROL_PAR_POS_X,get_control_par(%pbend_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_pbend - 2)*$GRID_X + $x_px_pbend)
+			
+			set_control_par (%pbend_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%pbend_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_pbend - 2)*$GRID_Y + $y_px_pbend) 
+			
+			inc($count)
+		end while
+		
+		declare $a_pbend
+		declare $helper_pbend
+		
+		declare $p_helper
+		declare $Pbend_max
+		make_persistent($Pbend_max)
+		
+		declare $Pbend_diff
+		make_persistent($Pbend_diff)
+		
+		declare $pup
+		make_persistent($pup)
+		
+		declare $pdown
+		make_persistent($pdown)
+		
+		declare $pmax
+		make_persistent($pmax)
+		
+		read_persistent_var($pbend_down)
+		read_persistent_var($down_pbend)
+		$helper_pbend := ($pbend_down*1000)/1200
+		$helper_pbend := ($helper_pbend*$helper_pbend*12)/10
+	
+		read_persistent_var($pbend_up)
+		read_persistent_var($up_pbend)
+		$helper_pbend := ($pbend_up*1000)/1200
+		$helper_pbend := ($helper_pbend*$helper_pbend*12)/10
+	
+	
+		if ($down_pbend < 0)
+			if ($helper_pbend < 100000)
+				set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL, "-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+			else
+				set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,"-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+			end if
+		else
+			if ($helper_pbend < 100000)
+				set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+			else
+				set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+			end if
+		end if
+		if ($up_pbend < 0)
+			if ($helper_pbend < 100000)
+				set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,"-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+			else
+				set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL, "-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+			end if
+		else
+			if ($helper_pbend < 100000)
+				set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+			else
+				set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+			end if
+		end if
+	{*** END CONTROL GROUP "PBEND"}
+	
+	{*** CONTROL GROUP "TRANSPOSE"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_transpose := 1 {X Position of Control Group in grid}
+		declare $y_grid_transpose := 7 {Y Position of Control Group in grid}
+		declare $x_px_transpose := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_transpose := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_TRANSPOSE := 2 {number of controls in this control group}
+	
+		declare ui_value_edit $semi_transpose (-12,12,1)
+		declare ui_value_edit $oct_transpose (-5,5,1)
+		
+		declare %transpose_id[$NUM_TRANSPOSE]
+		%transpose_id[0] := get_ui_id($semi_transpose)
+		%transpose_id[1] := get_ui_id($oct_transpose)
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($semi_transpose, ($GRID_X * 1) -32, ($GRID_Y * 2) + 7)
+		move_control_px($oct_transpose, ($GRID_X * 1) + 24, ($GRID_Y * 2) + 7)
+		
+		{VARIOUS ATTRIBUTES}
+		
+		set_control_par (get_ui_id($semi_transpose),$CONTROL_PAR_WIDTH,40)
+		set_text($semi_transpose,"")
+		set_control_par_str(get_ui_id($semi_transpose), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($semi_transpose), $CONTROL_PAR_SHOW_ARROWS, 0)
+		$semi_transpose := 0
+		make_persistent ($semi_transpose)
+		set_control_help($semi_transpose,"Semi: Transposes incoming MIDI notes in semitones. Only notes which pass the key range are transposed.")
+		
+		set_control_par (get_ui_id($oct_transpose),$CONTROL_PAR_WIDTH,40)
+		set_text($oct_transpose,"")
+		set_control_par_str(get_ui_id($oct_transpose), $CONTROL_PAR_PICTURE, "pv_synth_dragger")
+		set_control_par(get_ui_id($oct_transpose), $CONTROL_PAR_SHOW_ARROWS, 0)
+		$oct_transpose := 0
+		make_persistent ($oct_transpose)
+		set_control_help($oct_transpose,"Oct: Transposes incoming MIDI notes in octaves. Only notes which pass the key range are transposed.")
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_TRANSPOSE)
+			set_control_par (%transpose_id[$count],$CONTROL_PAR_POS_X,get_control_par(%transpose_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_transpose - 2)*$GRID_X + $x_px_transpose)
+			
+			set_control_par (%transpose_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%transpose_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_transpose - 2)*$GRID_Y + $y_px_transpose) 
+			
+			inc($count)
+		end while
+		
+		declare $cur_event_note
+	
+	{*** END CONTROL GROUP "TRANSPOSE"}
+	
+	{*** CONTROL GROUP "TUNING"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_tuning := 2 {X Position of Control Group in grid}
+		declare $y_grid_tuning := 8 {Y Position of Control Group in grid}
+		declare $x_px_tuning := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_tuning := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_tuning := 2 {number of controls in this control group}
+	
+		declare ui_menu $key_tuning {the root note}
+		declare ui_menu $scale_tuning {the scale presets}
+		
+		declare %tuning_id[$NUM_tuning]
+		%tuning_id[0] := get_ui_id($key_tuning)
+		%tuning_id[1] := get_ui_id($scale_tuning)
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($key_tuning, ($GRID_X * 1) + 17, ($GRID_Y * 1) + 7)
+		move_control_px($scale_tuning, ($GRID_X * 1) + 17, ($GRID_Y * 2) + 15)
+		
+		{VARIOUS ATTRIBUTES}
+		
+		set_control_par (get_ui_id($key_tuning),$CONTROL_PAR_WIDTH,40)
+		set_control_par_str (get_ui_id($key_tuning), $CONTROL_PAR_PICTURE, "pv_synth_dropdown")
+		make_persistent ($key_tuning)
+		set_control_help($key_tuning,"Key: Select the root note of the scale.")
+		
+		set_control_par (get_ui_id($scale_tuning),$CONTROL_PAR_WIDTH,95)
+		set_control_par_str (get_ui_id($scale_tuning), $CONTROL_PAR_PICTURE, "pv_synth_dropdown")
+		make_persistent ($scale_tuning)
+		set_control_help($scale_tuning,"Scale: Choose a preset tuning.")
+		
+		{Other}
+		
+		add_menu_item($key_tuning,"C", 0)
+		add_menu_item($key_tuning,"Db",1)
+		add_menu_item($key_tuning,"D", 2)
+		add_menu_item($key_tuning,"Eb",3)
+		add_menu_item($key_tuning,"E",4)
+		add_menu_item($key_tuning,"F",5)
+		add_menu_item($key_tuning,"Gb",6)
+		add_menu_item($key_tuning,"G",7)
+		add_menu_item($key_tuning,"Ab",8)
+		add_menu_item($key_tuning,"A",9)
+		add_menu_item($key_tuning,"Bb",10)
+		add_menu_item($key_tuning,"B",11)
+		
+		add_menu_item($scale_tuning,"Equal Tempered", -1)
+		add_menu_item($scale_tuning,"Pure", 0)
+		add_menu_item($scale_tuning,"Pythagorean", 1)
+		add_menu_item($scale_tuning,"Mean Tone", 2)
+		add_menu_item($scale_tuning,"Werckmeister", 3)
+		add_menu_item($scale_tuning,"Valotti", 4)
+		add_menu_item($scale_tuning,"Overtone", 5)
+		add_menu_item($scale_tuning,"Pelog & Slendro", 6)
+		add_menu_item($scale_tuning,"Quartertone", 7)
+		
+		
+		$count := 0
+		while ($count < $NUM_tuning)
+			set_control_par (%tuning_id[$count],$CONTROL_PAR_POS_X,get_control_par(%tuning_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_tuning - 2)*$GRID_X + $x_px_tuning)
+			
+			set_control_par (%tuning_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%tuning_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_tuning - 2)*$GRID_Y + $y_px_tuning) 
+			
+			inc($count)
+		end while
+			
+		{taken from original microtuner}
+		
+		declare %tune_factory[8*12]:= (...
+		0,-29,  4, 16,-14, -2,-31,  2, 14,-16, 18,-12, {0 Pure } ...
+		0, 14,  4, -5,  8, -2, 12,  2, 16,  6,  4, 10, {1 Pythagorean }...
+		0,-24, -7, 10,-14,  3,-21, -3,-27,-10,  7,-17, {2 Mean Tone}...
+		0,-10, -8, -6,-10, -2,-12, -4, -8,-12, -4, -8, {3 Werckmeister}...
+		0, -6, -4, -2, -8,  2, -8, -2, -4, -6,  0,-10, {4 Valotti } ...
+		0,  5,  4, -2,-14,-29,-49,  2, 41,  6,-31,-12, {5 Overtone}...
+		0, -100, -29, -60, -57, 14, -120, -14, -80, -43, -40,-71, {6 Pelog/Slendro} ...
+		0,-10, -4, -6, -8, -2,-12, -2, -8, -6, -4, -8) {7 Quartertone }
+			
+	
+	{*** END CONTROL GROUP "TUNING"}
+	
+	{*** CONTROL GROUP "RANDOMIZE"}
+	
+		{POSITIONING OF CONTROL GROUP}
+		
+		declare $x_grid_randomize := 3 {X Position of Control Group in grid}
+		declare $y_grid_randomize := 8 {Y Position of Control Group in grid}
+		declare $x_px_randomize := 0 {X Position Offset Control Group in pixel}
+		declare $y_px_randomize := 0 {Y Position Offset Control Group in pixel}
+		
+		{DECLARATION AND UI_IDs}
+		
+		declare const $NUM_RANDOMIZE := 9 {number of controls in this control group}
+		
+		declare ui_slider $knob_1_randomize (0,100)
+		declare ui_slider $knob_2_randomize (0,100)
+		declare ui_slider $knob_3_randomize (0,100)
+		declare ui_slider $knob_4_randomize (0,100)
+		declare ui_label $lb_knob_1_randomize (1,1)
+		declare ui_label $lb_knob_2_randomize (1,1)
+		declare ui_label $lb_knob_3_randomize (1,1)
+		declare ui_label $lb_knob_4_randomize (1,1)
+		
+		declare ui_switch $button_randomize
+		
+		declare %randomize_id[$NUM_RANDOMIZE]
+		%randomize_id[0] := get_ui_id($button_randomize)
+		%randomize_id[1] := get_ui_id($knob_1_randomize)
+		%randomize_id[2] := get_ui_id($knob_2_randomize)
+		%randomize_id[3] := get_ui_id($knob_3_randomize)
+		%randomize_id[4] := get_ui_id($knob_4_randomize)
+		%randomize_id[5] := get_ui_id($lb_knob_1_randomize)
+		%randomize_id[6] := get_ui_id($lb_knob_2_randomize)
+		%randomize_id[7] := get_ui_id($lb_knob_3_randomize)
+		%randomize_id[8] := get_ui_id($lb_knob_4_randomize)
+
+		
+		{POSITIONING OF INDIVIDUAL CONTROLS}
+		
+		move_control_px($button_randomize, ($GRID_X * 1) + 63, ($GRID_Y * 2) - 3) {possible to offset control in pixels}
+		move_control_px($knob_1_randomize, ($GRID_X * 2) + 15, ($GRID_Y * 1) + 10)
+		move_control_px($knob_2_randomize, ($GRID_X * 2) + 83, ($GRID_Y * 1) + 10)
+		move_control_px($knob_3_randomize, ($GRID_X * 3) + 59, ($GRID_Y * 1) + 10)
+		move_control_px($knob_4_randomize, ($GRID_X * 4) + 34, ($GRID_Y * 1) + 10)
+		
+		{VARIOUS ATTRIBUTES}
+		
+		set_text($button_randomize,"")
+		set_control_par(get_ui_id($button_randomize), $CONTROL_PAR_HEIGHT, 30)
+		set_control_par(get_ui_id($button_randomize), $CONTROL_PAR_WIDTH, 15)
+		set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_PICTURE, "pv_synth_switch")
+		$button_randomize := 0
+		make_persistent ($button_randomize)
+				
+  		$knob_1_randomize := 0
+		make_persistent ($knob_1_randomize)
+		set_control_help ($knob_1_randomize,"Volume: randomly changes the volume of each note  (max: -6db to +6 db).")
+		
+		
+  		$knob_2_randomize := 0
+		make_persistent ($knob_2_randomize)
+		set_control_help ($knob_2_randomize,"Velocity: randomly changes the velocity of each note (max: -64 to +64).")
+		
+		
+  		$knob_3_randomize := 0
+		make_persistent ($knob_3_randomize)
+		set_control_help ($knob_3_randomize,"Pan: randomly changes the panning of each note.")
+		
+		
+  		$knob_4_randomize := 0
+		make_persistent ($knob_4_randomize)
+		set_control_help ($knob_4_randomize,"Pitch: randomly detunes each note (max: -100 cent to +100 cent.")
+
+		set_text($lb_knob_1_randomize, "VOLUME")
+		set_text($lb_knob_2_randomize, "VELOCITY")
+		set_text($lb_knob_3_randomize, "PAN")
+		set_text($lb_knob_4_randomize, "PITCH")
+
+		$count := 1
+		while ($count < 5)
+			set_control_par_str(%randomize_id[$count], $CONTROL_PAR_PICTURE, "pv_synth_knob_white")
+			set_control_par(%randomize_id[$count], $CONTROL_PAR_MOUSE_BEHAVIOUR, -500)
+			set_control_par(%randomize_id[$count+4], $CONTROL_PAR_POS_X,...
+					get_control_par(%randomize_id[$count],$CONTROL_PAR_POS_X)-25)
+			set_control_par(%randomize_id[$count+4], $CONTROL_PAR_POS_Y,...
+					get_control_par(%randomize_id[$count],$CONTROL_PAR_POS_Y)+31)
+			set_control_par(%randomize_id[$count+4], $CONTROL_PAR_HIDE, $HIDE_PART_BG)
+			set_control_par(%randomize_id[$count+4], $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+			set_control_par(%randomize_id[$count+4], $CONTROL_PAR_FONT_TYPE, $FONT_ID)
+			inc($count)
+		end while		
+		
+		set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_AUTOMATION_NAME, "Randomize")
+		set_control_par_str(get_ui_id($knob_1_randomize), $CONTROL_PAR_AUTOMATION_NAME, "Rnd Vol")
+		set_control_par_str(get_ui_id($knob_2_randomize), $CONTROL_PAR_AUTOMATION_NAME, "Rnd Vel")
+		set_control_par_str(get_ui_id($knob_3_randomize), $CONTROL_PAR_AUTOMATION_NAME, "Rnd Pan")
+		set_control_par_str(get_ui_id($knob_4_randomize), $CONTROL_PAR_AUTOMATION_NAME, "Rnd Tune")
+		
+		read_persistent_var($knob_1_randomize)
+		read_persistent_var($knob_2_randomize)
+		read_persistent_var($knob_3_randomize)
+		read_persistent_var($knob_4_randomize)
+		
+		set_control_par_str(%randomize_id[1], $CONTROL_PAR_LABEL, $knob_1_randomize & " %")
+		set_control_par_str(%randomize_id[2], $CONTROL_PAR_LABEL, $knob_2_randomize & " %")
+		set_control_par_str(%randomize_id[3], $CONTROL_PAR_LABEL, $knob_3_randomize & " %")
+		set_control_par_str(%randomize_id[4], $CONTROL_PAR_LABEL, $knob_4_randomize & " %")
+		
+		read_persistent_var($button_randomize)
+		if ($button_randomize = 1)
+			set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_LABEL,"On")
+		else
+			set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_LABEL,"Off")
+		end if
+		
+		{Other}
+		
+		$count := 0
+		while ($count < $NUM_RANDOMIZE)
+			set_control_par (%randomize_id[$count],$CONTROL_PAR_POS_X,get_control_par(%randomize_id[$count],$CONTROL_PAR_POS_X)...
+			+$ROOT_X + ($x_grid_randomize - 2)*$GRID_X + $x_px_randomize)
+			
+			set_control_par (%randomize_id[$count],$CONTROL_PAR_POS_Y,get_control_par(%randomize_id[$count],$CONTROL_PAR_POS_Y)...
+			+$ROOT_Y + ($y_grid_randomize - 2)*$GRID_Y + $y_px_randomize) 
+			
+			inc($count)
+		end while
+	
+		declare $new_vel_randomize
+	{*** END CONTROL GROUP "RANDOMIZE"}
+end on
+on note
+	
+	{KEYRANGE}
+	if ($learn_keyrange = 1)
+		if ($learn_counter = 0)
+			$min_keyrange := $EVENT_NOTE
+			inc($learn_counter)
+		else
+			$max_keyrange := $EVENT_NOTE
+			$learn_counter := 0
+			$learn_keyrange := 0
+			
+			if ($min_keyrange > $max_keyrange)
+				$a_keyrange := $max_keyrange
+				$max_keyrange := $min_keyrange
+				$min_keyrange := $a_keyrange
+			end if
+		end if
+		ignore_event($EVENT_ID)
+		exit
+	end if
+	if (not in_range($EVENT_NOTE,$min_keyrange,$max_keyrange))
+		ignore_event($EVENT_ID)
+		exit
+	end if
+	{END KEYRANGE}
+	
+	{TUNING}
+	if ($scale_tuning # -1)
+		if ($scale_tuning < 7) 
+			change_tune($EVENT_ID,%tune_factory[($scale_tuning*12)+(($EVENT_NOTE +12-$key_tuning) mod 12)]*1000,0)
+		else
+			{copy from quartertone}
+				if (($EVENT_NOTE - ($key_tuning+60)) mod 2 = 0) {no detuning}
+					change_note ($EVENT_ID, (($EVENT_NOTE - ($key_tuning+60)) / 2) + ($key_tuning+60))
+				else
+					if ($EVENT_NOTE > ($key_tuning+60))
+						change_note ($EVENT_ID, (($EVENT_NOTE - ($key_tuning+60)) / 2) + ($key_tuning+60) + 1)
+						change_tune ($EVENT_ID, -50000,0)
+					end if
+					if ($EVENT_NOTE < ($key_tuning+60))
+						change_note ($EVENT_ID, (($EVENT_NOTE - ($key_tuning+60)) / 2) + ($key_tuning+60) - 1)
+						change_tune ($EVENT_ID, 50000,0)
+					end if
+				end if
+			{end copy}
+		end if
+	end if
+	{END TUNING}
+	
+	{TRANSPOSE}
+	$cur_event_note := $EVENT_NOTE+ $semi_transpose + ($oct_transpose*12)
+	if ($cur_event_note < 0)
+		$cur_event_note := 0
+	end if
+	if ($cur_event_note > 127)
+		$cur_event_note := 127
+	end if		
+	change_note($EVENT_ID,$cur_event_note)
+	{END TRANSPOSE}
+	
+	{VELOCITY}
+	$new_vel := %table[$EVENT_VELOCITY]
+	if ($new_vel < 1)
+		$new_vel := 1
+	end if
+	if ($new_vel > 127)
+		$new_vel := 127
+	end if
+	change_velo ($EVENT_ID, $new_vel)
+	{END VELOCITY}
+	
+	{RANDOMIZE}
+	if ($button_randomize = 1)
+		$new_vel_randomize := $EVENT_VELOCITY + (random (-127,127) * $knob_2_randomize / 200)
+		if (in_range ($new_vel_randomize,1,127))
+			$new_vel_randomize := $new_vel_randomize
+		else
+			if ($new_vel_randomize > 127)
+				$new_vel_randomize := 127
+			end if
+			if ($new_vel_randomize < 1)
+				$new_vel_randomize := 1
+			end if
+		end if
+	
+		change_velo ($EVENT_ID,$new_vel_randomize)
+		change_tune ($EVENT_ID,random (-1000,1000) * $knob_4_randomize, 1)
+		change_vol ($EVENT_ID, random (-60,60) * $knob_1_randomize, 1)
+		change_pan ($EVENT_ID, random(-$knob_3_randomize*10,$knob_3_randomize*10), 1)
+	end if
+	{END RANDOMIZE}
+	
+end on
+
+{KEYRANGE CALLBACKS}
+on ui_control ($learn_keyrange)
+	if ($learn_keyrange = 1)
+		$learn_counter := 0
+		set_control_par_str(get_ui_id($learn_keyrange), $CONTROL_PAR_LABEL, "On")
+	else
+		$learn_counter := 0
+		{reset the key range}
+		$min_keyrange := 0
+		$max_keyrange := 127
+		set_control_par_str(get_ui_id($learn_keyrange), $CONTROL_PAR_LABEL, "Off")
+	end if
+end on
+on ui_control ($min_keyrange)
+	if ($min_keyrange > $max_keyrange)
+		$max_keyrange := $min_keyrange
+	end if
+end on
+on ui_control ($max_keyrange)
+	if ($max_keyrange < $min_keyrange)
+		$min_keyrange := $max_keyrange
+	end if
+end on
+{END KEYRANGE CALLBACKS}
+
+{VELOCITY CALLBACKS}
+on ui_control ($linear_velocity)
+	if ($linear_velocity = 0)
+		$linear_velocity := 1
+	else
+		$mode_velocity := 0
+		$exp_1_velocity := 0
+		$exp_2_velocity := 0
+		$fix_velocity := 0
+	end if
+	
+	{start copy}
+	$CShow := 0
+	$curve := $CShow
+	$knob_helper := ($curve*(-1) + 1000)
+	$count := 0
+	$helper := 1000
+	$kurven_hoehe := 0
+	while($count < 128)
+		$helper := ($helper * $knob_helper)/1000
+		%curve_deriv[$count] := $helper
+		$kurven_hoehe := $kurven_hoehe + %curve_deriv[$count]
+		inc($count)
+	end while
+	$count := 2
+	%curve_table_helper[0] := 0
+	%curve_table_helper[1] := 0
+	while ($count <128)
+		%curve_table_helper[$count] := ((%curve_table_helper[$count-1]+%curve_deriv[$count]))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := ((%curve_table_helper[$count]*128)/(($kurven_hoehe)/100))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := (%curve_form[$count]*12700)/%curve_form[127]
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%table[$count] := $min_velocity + (((%curve_form[$count])*($max_velocity-$min_velocity))/12700)
+		inc($count)
+	end while
+	{end copy}
+end on
+
+on ui_control ($exp_1_velocity)
+	if ($exp_1_velocity = 0)
+		$exp_1_velocity := 1
+	else
+		$mode_velocity := 1
+		$linear_velocity := 0
+		$exp_2_velocity := 0
+		$fix_velocity := 0
+	end if
+	{start copy}
+	$CShow := $EXP_SHAPE
+	$curve := $CShow
+	$knob_helper := ($curve*(-1) + 1000)
+	$count := 0
+	$helper := 1000
+	$kurven_hoehe := 0
+	while($count < 128)
+		$helper := ($helper * $knob_helper)/1000
+		%curve_deriv[$count] := $helper
+		$kurven_hoehe := $kurven_hoehe + %curve_deriv[$count]
+		inc($count)
+	end while
+	$count := 2
+	%curve_table_helper[0] := 0
+	%curve_table_helper[1] := 0
+	while ($count <128)
+		%curve_table_helper[$count] := ((%curve_table_helper[$count-1]+%curve_deriv[$count]))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := ((%curve_table_helper[$count]*128)/(($kurven_hoehe)/100))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := (%curve_form[$count]*12700)/%curve_form[127]
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%table[$count] := $min_velocity + (((%curve_form[$count])*($max_velocity-$min_velocity))/12700)
+		inc($count)
+	end while
+	{end copy}
+end on
+
+on ui_control ($exp_2_velocity)
+	if ($exp_2_velocity = 0)
+		$exp_2_velocity := 1
+	else
+		$mode_velocity := 2
+		
+		$linear_velocity := 0
+		$exp_1_velocity := 0
+		$fix_velocity := 0
+	end if
+	{start copy}
+	$CShow := -$EXP_SHAPE
+	$curve := $CShow
+	$knob_helper := ($curve*(-1) + 1000)
+	$count := 0
+	$helper := 1000
+	$kurven_hoehe := 0
+	while($count < 128)
+		$helper := ($helper * $knob_helper)/1000
+		%curve_deriv[$count] := $helper
+		$kurven_hoehe := $kurven_hoehe + %curve_deriv[$count]
+		inc($count)
+	end while
+	$count := 2
+	%curve_table_helper[0] := 0
+	%curve_table_helper[1] := 0
+	while ($count <128)
+		%curve_table_helper[$count] := ((%curve_table_helper[$count-1]+%curve_deriv[$count]))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := ((%curve_table_helper[$count]*128)/(($kurven_hoehe)/100))
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%curve_form[$count] := (%curve_form[$count]*12700)/%curve_form[127]
+		inc($count)
+	end while
+	$count := 0
+	while ($count <128)
+		%table[$count] := $min_velocity + (((%curve_form[$count])*($max_velocity-$min_velocity))/12700)
+		inc($count)
+	end while
+	{end copy}
+end on
+
+on ui_control ($fix_velocity)
+	if ($fix_velocity = 0)
+		$fix_velocity := 1
+	else
+		$mode_velocity := 3
+	
+		$linear_velocity := 0
+		$exp_1_velocity := 0
+		$exp_2_velocity := 0
+	end if
+	{start copy}		
+	$count := 0
+	while ($count <128)
+		%table[$count] := $max_velocity
+		inc($count)
+	end while
+	{end copy}
+end on
+
+on ui_control ($min_velocity)
+	if ($min_velocity > $max_velocity)
+		$min_velocity := $max_velocity
+	end if
+	
+	select ($mode_velocity)
+		case 0 to 2
+			$count := 0
+			while ($count <128)
+				%table[$count] := $min_velocity + ((%curve_form[$count]*($max_velocity-$min_velocity))/12700)
+				inc($count)
+			end while				
+	end select
+end on
+
+on ui_control ($max_velocity)
+	if ($max_velocity < $min_velocity)
+		$max_velocity := $min_velocity
+	end if
+	
+	select ($mode_velocity)
+		case 0 to 2
+			$count := 0
+			while ($count <128)
+				%table[$count] := $min_velocity + ((%curve_form[$count]*($max_velocity-$min_velocity))/12700)
+				inc($count)
+			end while				
+		case 3
+			$count := 0
+			while ($count <128)
+				%table[$count] := $max_velocity
+				inc($count)
+			end while
+	end select
+end on
+
+on ui_control ($vel_vol_velocity)
+	$count := 0
+	while($count < $NUM_GROUPS and $count < 512)
+		_set_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY,$vel_vol_velocity,$count,find_mod($count,"VEL_VOLUME"),-1)
+		inc($count)
+	end while
+	wait(1)
+	set_control_par_str(%velocity_id[0], $CONTROL_PAR_LABEL,...
+	get_engine_par_disp($ENGINE_PAR_MOD_TARGET_INTENSITY,0,find_mod(0,"VEL_VOLUME"),-1) & " %")
+end on
+{END VELOCITY CALLBACKS}
+{PBEND CALLBACKS}
+on ui_control ($down_pbend)
+	$Pbend_down := $down_pbend*10
+	$Pbend_diff := $pbend_up - $pbend_down
+	if (abs($pbend_up) > abs($pbend_down))
+		$pbend_max := abs($pbend_up *10000)/12
+	else
+		$pbend_max := abs($pbend_down *10000)/12	
+	end if
+	$helper_pbend := ($pbend_down*1000)/1200
+	$helper_pbend := ($helper_pbend*$helper_pbend*12)/10
+	if ($down_pbend < 0)
+		$pdown := $helper_pbend/1000
+	else
+		$pdown := -$helper_pbend/1000	
+	end if
+	if ($down_pbend < 0)
+		if ($helper_pbend < 100000)
+			set_text ($lb_down_pbend,"-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000)
+			set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL, "-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+		else
+			set_text ($lb_down_pbend,"-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000)
+			set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,"-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+		end if
+	else
+		if ($helper_pbend < 100000)
+			set_text ($lb_down_pbend,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000)
+			set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+		else
+			set_text ($lb_down_pbend,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000)
+			set_control_par_str(%pbend_id[0], $CONTROL_PAR_LABEL,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+		end if
+	end if
+	$a_pbend := 0
+	while($a_pbend < $NUM_GROUPS)
+		_set_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY,$pbend_max,$a_pbend,find_mod($a_pbend,"PB_PITCH"),-1)
+		inc($a_pbend)
+	end while
+
+	$last_time_1 := $ENGINE_UPTIME
+	wait($wait_time * 1000)
+	if($ENGINE_UPTIME - $last_time_1 > $wait_time -5)
+		set_text ($lb_down_pbend,"DOWN")
+	end if
+end on
+
+on ui_control ($up_pbend)
+	$Pbend_up := $up_pbend*10
+	$Pbend_diff := $pbend_up - $pbend_down
+	if (abs($pbend_up) > abs($pbend_down))
+		$pbend_max := abs($pbend_up *10000)/12
+	else
+		$pbend_max := abs($pbend_down *10000)/12	
+	end if
+	$helper_pbend := ($pbend_up*1000)/1200
+	$helper_pbend := ($helper_pbend*$helper_pbend*12)/10
+	if ($up_pbend < 0)
+		$pup := -$helper_pbend/1000
+	else
+		$pup := $helper_pbend/1000	
+	end if
+	if ($up_pbend < 0)
+		if ($helper_pbend < 100000)
+			set_text ($lb_up_pbend,"-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000)
+			set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,"-0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+		else
+			set_text ($lb_up_pbend,"-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000)	
+			set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL, "-"&$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+		end if
+	else
+		if ($helper_pbend < 100000)
+			set_text ($lb_up_pbend,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000)
+			set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,"0."&$helper_pbend/10000&($helper_pbend mod 10000)/1000 & " st")
+		else
+			set_text ($lb_up_pbend,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000)
+			set_control_par_str(%pbend_id[1], $CONTROL_PAR_LABEL,$helper_pbend/100000&"."&($helper_pbend mod 100000)/10000 & " st")
+		end if
+	end if
+	$a_pbend := 0
+	while($a_pbend < $NUM_GROUPS)
+		_set_engine_par($ENGINE_PAR_MOD_TARGET_INTENSITY,$pbend_max,$a_pbend,find_mod($a_pbend,"PB_PITCH"),-1)
+		inc($a_pbend)
+	end while
+	
+	$last_time_2 := $ENGINE_UPTIME
+	wait($wait_time * 1000)
+	if($ENGINE_UPTIME - $last_time_2 > $wait_time -5)
+		set_text ($lb_up_pbend,"UP")
+	end if
+end on
+on controller
+	select ($CC_NUM)
+		case 128
+			if (abs($pup) > abs($pdown))
+				$pmax := abs($pup)
+			else
+				$pmax := abs($pdown)			
+			end if
+			if (%CC[128] < 0)
+				ignore_controller
+				$p_helper := ($pdown * %CC[128])/$pmax
+				set_controller(128,$p_helper)
+			else
+				ignore_controller
+				$p_helper := ($pup * %CC[128])/$pmax
+				set_controller(128,$p_helper)
+			end if
+	end select
+end on
+{END PBEND CALLBACKS}
+
+{RANDOMIZE CALLBACKS}
+on ui_control ($button_randomize)
+	if ($button_randomize = 1)
+		set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_LABEL,"On")
+	else
+		set_control_par_str(get_ui_id($button_randomize), $CONTROL_PAR_LABEL,"Off")
+	end if
+end on
+on ui_control ($knob_1_randomize)
+	set_control_par_str(%randomize_id[1], $CONTROL_PAR_LABEL, $knob_1_randomize & " %")
+end on
+on ui_control ($knob_2_randomize)
+	set_control_par_str(%randomize_id[2], $CONTROL_PAR_LABEL, $knob_2_randomize & " %")
+end on
+on ui_control ($knob_3_randomize)
+	set_control_par_str(%randomize_id[3], $CONTROL_PAR_LABEL, $knob_3_randomize & " %")
+end on
+on ui_control ($knob_4_randomize)
+	set_control_par_str(%randomize_id[4], $CONTROL_PAR_LABEL, $knob_4_randomize & " %")
+end on
+{END RANDOMIZE CALLBACKS}
