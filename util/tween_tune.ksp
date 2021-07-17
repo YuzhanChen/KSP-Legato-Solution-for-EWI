@@ -1,0 +1,34 @@
+
+on init
+    make_perfview
+    message( "" )
+    set_script_title( "title" )
+
+    { ---- function tween_tune ---- start }
+    declare $param_start_val
+    declare $param_end_val
+    declare $param_target
+
+    { tween time in microseconds }
+    declare $conf_time
+    { tween update interval in microseconds }
+    declare $conf_interval
+
+    declare $_count
+    declare $_delta_val
+    { ---- function tween_tune ---- end }
+    
+end on
+
+
+function tween_tune 
+    $_count := $conf_time / $conf_interval
+    $_delta_val := ($param_end_val - $param_start_val) / $_count
+    while($_count > 0)
+        change_tune($param_target, $param_start_val, 0)
+        $param_start_val := $param_start_val + $_delta_val
+        $_count := $_count - 1
+        wait($conf_interval)
+    end while
+    change_tune($param_target, $param_end_val, 0)
+end function

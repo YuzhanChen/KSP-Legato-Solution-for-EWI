@@ -1,0 +1,86 @@
+on init
+    make_perfview
+    set_script_title( "ewi legato" )
+    message("")
+
+    declare ui_knob $conf_time (0,50000,1)
+    $conf_time := 20000
+    set_control_help( $conf_time, "tune change time in microseconds" )
+
+    declare ui_knob $conf_interval (0,200,1)
+    $conf_interval := 100
+    set_control_help( $conf_interval, "tween update interval in microseconds" )
+
+    declare $next_note
+    declare $prev_note
+    declare $origin_note
+    declare %note_map[128] := (0)
+
+    declare $curr_note_ev := 0
+
+    { ---- function tween_tune ---- start }
+    declare $param_start_val
+    declare $param_end_val
+    declare $param_target
+
+    { tween time in microseconds }
+    { declare $conf_time }
+    { tween update interval in microseconds }
+    { declare $conf_interval }
+
+    declare $_count
+    declare $_delta_val
+    { ---- function tween_tune ---- end }
+
+end on
+
+function tween_tune 
+    $_count := $conf_time / $conf_interval
+    $_delta_val := ($param_end_val - $param_start_val) / $_count
+    while($_count > 0)
+        change_tune($param_target, $param_start_val, 0)
+        $param_start_val := $param_start_val + $_delta_val
+        $_count := $_count - 1
+        wait($conf_interval)
+    end while
+    change_tune($param_target, $param_end_val, 0)
+end function
+
+{ note callback, executed whenever a note on message is received }
+on note
+
+    $prev_note := search(%note_map, 1)
+    %note_map[$EVENT_NOTE] := 1
+
+    if($prev_note # -1)
+        ignore_event( $EVENT_ID )
+
+        $param_start_val := ($prev_note - $origin_note) * 100000
+        $param_end_val := ($EVENT_NOTE - $origin_note) * 100000
+        $param_target := $curr_note_ev
+
+        call tween_tune
+
+    else
+        $curr_note_ev := $EVENT_ID
+        $origin_note := $EVENT_NOTE
+    end if 
+
+end on
+
+{ release callback, executed whenever a note off message is received }
+on release
+    %note_map[$EVENT_NOTE] := 0
+    $next_note := search(%note_map, 1)
+
+    if($next_note # -1)
+        ignore_event( $EVENT_ID )
+    else 
+        note_off( $curr_note_ev )
+    end if
+    
+end on
+
+
+
+

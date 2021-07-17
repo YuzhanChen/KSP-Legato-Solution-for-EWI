@@ -1,0 +1,44 @@
+
+on init
+    make_perfview
+    message( "" )
+    set_script_title( "title" )
+
+    { ---- function tween_tune_vol ---- start }
+    declare $param_tune_start_val
+    declare $param_tune_end_val
+    declare $param_vol_start_val
+    declare $param_vol_end_val
+    declare $param_target
+
+
+    { tween time in microseconds }
+    declare $conf_time
+    { tween update interval in microseconds }
+    declare $conf_interval
+
+    declare $_count
+    declare $_tune_delta_val
+    declare $_vol_delta_val
+    { ---- function tween_tune_vol ---- end }
+    
+end on
+
+
+function tween_tune_vol 
+    $_count := $conf_time / $conf_interval
+    $_tune_delta_val := ($param_tune_end_val - $param_tune_start_val) / $_count
+    $_vol_delta_val := ($param_vol_end_val - $param_vol_start_val) / $_count
+    while($_count > 0)
+        change_tune($param_target, $param_tune_start_val, 0)
+        $param_tune_start_val := $param_tune_start_val + $_tune_delta_val
+
+        change_vol($param_target, $param_vol_start_val, 0)
+        $param_vol_start_val := $param_vol_start_val + $_vol_delta_val
+        
+        $_count := $_count - 1
+        wait($conf_interval)
+    end while
+    change_tune($param_target, $param_tune_end_val, 0)
+    change_vol($param_target, $param_vol_end_val, 0)
+end function

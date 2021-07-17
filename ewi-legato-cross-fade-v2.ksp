@@ -1,0 +1,139 @@
+on init
+    make_perfview
+    set_script_title( "ewi legato" )
+    message("")
+
+    declare ui_knob $conf_time (0,20000,1)
+    $conf_time := 10000
+    set_control_help( $conf_time, "cross fade time in microseconds" )
+
+    declare ui_knob $conf_interval (0,200,1)
+    $conf_interval := 100
+    set_control_help( $conf_interval, "cross fade update time in microseconds" )
+
+    declare ui_knob $mute_vol( 0, -20000, 1 ) 
+    $mute_vol := -10000
+
+    declare $next_note
+    declare $prev_note
+    declare $new_note_ev
+    declare %note_map[128] := (0)
+
+    { ---- function tween_tune_vol_1 ---- start }
+    declare $param_tune_start_val_1
+    declare $param_tune_end_val_1
+    declare $param_vol_start_val_1
+    declare $param_vol_end_val_1
+    declare $param_target_1
+
+    declare $_count_1
+    declare $_tune_delta_val_1
+    declare $_vol_delta_val_1
+    { ---- function tween_tune_vol_1 ---- end }
+
+    { ---- function tween_tune_vol_2 ---- start }
+    declare $param_tune_start_val_2
+    declare $param_tune_end_val_2
+    declare $param_vol_start_val_2
+    declare $param_vol_end_val_2
+    declare $param_target_2
+
+    declare $_count_2
+    declare $_tune_delta_val_2
+    declare $_vol_delta_val_2
+    { ---- function tween_tune_vol_2 ---- end }
+
+    declare $t1
+    declare $fade_in_tune_range
+    declare $fade_in_tune_offset
+    declare $fade_in_vol_offset
+
+    declare $t2
+    declare $fade_out_tune_range
+    declare $fade_out_tune_offset
+    declare $fade_out_vol_offset
+
+end on
+
+function tween_tune_vol_1
+    $_count_1 := $conf_time / $conf_interval
+    $_tune_delta_val_1 := ($param_tune_end_val_1 - $param_tune_start_val_1) / $_count_1
+    $_vol_delta_val_1 := ($param_vol_end_val_1 - $param_vol_start_val_1) / $_count_1
+    while($_count_1 > 0)
+        change_tune($param_target_1, $param_tune_start_val_1, 0)
+        $param_tune_start_val_1 := $param_tune_start_val_1 + $_tune_delta_val_1
+
+        change_vol($param_target_1, $param_vol_start_val_1, 0)
+        $param_vol_start_val_1 := $param_vol_start_val_1 + $_vol_delta_val_1
+        
+        $_count_1 := $_count_1 - 1
+        wait($conf_interval)
+    end while
+    change_tune($param_target_1, $param_tune_end_val_1, 0)
+    change_vol($param_target_1, $param_vol_end_val_1, 0)
+end function
+
+function tween_tune_vol_2
+    $_count_2 := $conf_time / $conf_interval
+    $_tune_delta_val_2 := ($param_tune_end_val_2 - $param_tune_start_val_2) / $_count_2
+    $_vol_delta_val_2 := ($param_vol_end_val_2 - $param_vol_start_val_2) / $_count_2
+    while($_count_2 > 0)
+        change_tune($param_target_2, $param_tune_start_val_2, 0)
+        $param_tune_start_val_2 := $param_tune_start_val_2 + $_tune_delta_val_2
+
+        change_vol($param_target_2, $param_vol_start_val_2, 0)
+        $param_vol_start_val_2 := $param_vol_start_val_2 + $_vol_delta_val_2
+        
+        $_count_2 := $_count_2 - 1
+        wait($conf_interval)
+    end while
+    change_tune($param_target_2, $param_tune_end_val_2, 0)
+    change_vol($param_target_2, $param_vol_end_val_2, 0)
+end function
+
+
+{ note callback, executed whenever a note on message is received }
+on note
+
+    $prev_note := search(%note_map, 1)
+    %note_map[$EVENT_NOTE] := 1
+
+    if($prev_note # -1)
+
+        ignore_event( $EVENT_ID )
+        $new_note_ev := play_note( $EVENT_NOTE, $EVENT_VELOCITY, 1*1000*1000 , -1 )
+
+        { fade in }
+        $param_tune_start_val_1 := ($prev_note - $EVENT_NOTE) * 100000
+        $param_tune_end_val_1 := 0
+        $param_vol_start_val_1 := $mute_vol
+        $param_vol_end_val_1 := 0
+        $param_target_1 := $new_note_ev
+
+        call tween_tune_vol_1
+
+    end if
+
+end on
+
+{ release callback, executed whenever a note off message is received }
+on release
+    %note_map[$EVENT_NOTE] := 0
+    $next_note := search(%note_map, 1)
+
+    if($next_note # -1)
+        ignore_event( $EVENT_ID )
+        { fade out }
+        $param_tune_start_val_2 := 0
+        $param_tune_end_val_2 := ($next_note - $EVENT_NOTE)* 100000
+        $param_vol_start_val_2 := 0
+        $param_vol_end_val_2 := $mute_vol
+        $param_target_2 := $EVENT_ID
+
+        call tween_tune_vol_2
+
+        note_off( $EVENT_ID )
+    end if
+    
+end on
+
